@@ -23,6 +23,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 
 // Application Services
 builder.Services.AddScoped<IProsumerService, ProsumerService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -39,7 +40,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Use HTTPS redirection in Production or when HTTPS port is configured
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthorization();
 
