@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace SolarAPI.Models;
 
+[BsonIgnoreExtraElements]
 public class Reservation
 {
     [BsonId]
@@ -20,6 +21,10 @@ public class Reservation
     [BsonRepresentation(BsonType.ObjectId)]
     [BsonElement("microgridNodeId")]
     public string? MicrogridNodeId { get; set; }
+
+    [BsonRepresentation(BsonType.ObjectId)]
+    [BsonElement("nodeId")]
+    public string? NodeId { get; set; }
 
     [BsonElement("reservedEnergyKwh")]
     public double ReservedEnergyKwh { get; set; }

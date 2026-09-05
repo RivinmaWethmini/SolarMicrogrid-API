@@ -37,3 +37,4 @@ C:\Users\rivinma\Desktop\SolarProject\SolarAPI\obj\Debug\net8.0\refint\SolarAPI.
 C:\Users\rivinma\Desktop\SolarProject\SolarAPI\obj\Debug\net8.0\SolarAPI.pdb
 C:\Users\rivinma\Desktop\SolarProject\SolarAPI\obj\Debug\net8.0\SolarAPI.genruntimeconfig.cache
 C:\Users\rivinma\Desktop\SolarProject\SolarAPI\obj\Debug\net8.0\ref\SolarAPI.dll
+C:\Users\rivinma\Desktop\SolarProject\SolarAPI\obj\Debug\net8.0\SolarAPI.sourcelink.json
