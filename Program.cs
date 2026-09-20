@@ -1,10 +1,17 @@
+// ============================================================================
+// File: Program.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Author: Member 4 (Energy Reservation & QR Dispatch)
+// ============================================================================
+
 using MongoDB.Driver;
 using SolarAPI.Configurations;
 using SolarAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ─── MongoDB Configuration ────────────────────────────────────────────────────
 builder.Services.Configure<MongoDBSettings>(
     builder.Configuration.GetSection("MongoDBSettings"));
 
@@ -21,31 +28,48 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     return client.GetDatabase(settings?.DatabaseName ?? "SolarDb");
 });
 
-// Application Services
+// ─── Application Services ─────────────────────────────────────────────────────
 builder.Services.AddScoped<IProsumerService, ProsumerService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 
+// ─── CORS Policy ──────────────────────────────────────────────────────────────
+// FIX: CORS was missing — needed for React web client (SolarWeb) to call this API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// TODO (Member 2): When JWT authentication is ready, add the following:
+// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//     .AddJwtBearer(options => { /* JWT config from Member 2 */ });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ─── Middleware Pipeline ───────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Use HTTPS redirection in Production or when HTTPS port is configured
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
+app.UseCors("AllowAll");
+
+// TODO (Member 2): Uncomment when JWT is integrated:
+// app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
