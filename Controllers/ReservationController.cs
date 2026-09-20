@@ -1,5 +1,12 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
+// ============================================================================
+// File: ReservationController.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Author: Member 4 (Energy Reservation & QR Dispatch)
+// Description: RESTful Web API controller for reservation CRUD,
+//              7-day booking rule, 12-hour cancellation rule, and QR dispatch.
+// ============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using SolarAPI.Models;
 using SolarAPI.Services;
@@ -7,8 +14,7 @@ using SolarAPI.Services;
 namespace SolarAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-[Route("api/reservations")]
+[Route("api/reservations")] // FIX: Consistent lowercase route (was api/[controller] = api/Reservation)
 public class ReservationController : ControllerBase
 {
     private readonly IReservationService _reservationService;
@@ -18,17 +24,40 @@ public class ReservationController : ControllerBase
         _reservationService = reservationService;
     }
 
+    // ─── GET ALL ──────────────────────────────────────────────────────────────
+    // GET: api/reservations
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Reservation>>> GetAll()
+    public async Task<IActionResult> GetAll()
     {
         var reservations = await _reservationService.GetAllAsync();
         return Ok(reservations);
     }
 
+    // ─── GET STATS (Dashboard) ────────────────────────────────────────────────
+    // GET: api/reservations/stats
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var stats = await _reservationService.GetStatsAsync();
+        return Ok(stats);
+    }
+
+    // ─── GET BY PROSUMER ──────────────────────────────────────────────────────
+    // GET: api/reservations/prosumer/{prosumerId}
+    [HttpGet("prosumer/{prosumerId}")]
+    public async Task<IActionResult> GetByProsumer(string prosumerId)
+    {
+        var reservations = await _reservationService.GetByProsumerIdAsync(prosumerId);
+        return Ok(reservations);
+    }
+
+    // ─── GET BY ID ────────────────────────────────────────────────────────────
+    // GET: api/reservations/{id}
     [HttpGet("{id}")]
-    public async Task<ActionResult<Reservation>> GetById(string id)
+    public async Task<IActionResult> GetById(string id)
     {
         var reservation = await _reservationService.GetByIdAsync(id);
+
         if (reservation == null)
         {
             return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
@@ -37,115 +66,123 @@ public class ReservationController : ControllerBase
         return Ok(reservation);
     }
 
-    [HttpPost]
-    public async Task<ActionResult<Reservation>> Create([FromBody] Reservation reservation)
+    // ─── GET QR PAYLOAD ───────────────────────────────────────────────────────
+    // GET: api/reservations/{id}/qr
+    [HttpGet("{id}/qr")]
+    public async Task<IActionResult> GetQrPayload(string id)
     {
-        var created = await _reservationService.CreateAsync(reservation);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        var reservation = await _reservationService.GetByIdAsync(id);
+        if (reservation == null)
+            return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
+
+        if (!string.Equals(reservation.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "QR code is only available for Approved reservations." });
+
+        return Ok(new { reservationId = reservation.Id, qrPayload = reservation.QrPayload });
     }
 
-    // Handles PUT /api/reservations/{id} and PATCH /api/reservations/{id}
-    [HttpPut("{id}")]
-    [HttpPatch("{id}")]
-    public async Task<IActionResult> UpdateOrPatch(string id, [FromBody] JsonObject payload)
+    // ─── CREATE ───────────────────────────────────────────────────────────────
+    // POST: api/reservations
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] Reservation reservation)
     {
-        var existing = await _reservationService.GetByIdAsync(id);
-        if (existing == null)
-        {
-            return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
-        }
-
-        // Check if payload contains a "status" field
-        if (payload.TryGetPropertyValue("status", out var statusNode) && statusNode != null)
-        {
-            var statusStr = statusNode.ToString();
-            await _reservationService.UpdateStatusAsync(id, statusStr);
-            return NoContent();
-        }
-
-        // Otherwise try deserializing to full Reservation
         try
         {
-            var updatedObj = JsonSerializer.Deserialize<Reservation>(payload.ToJsonString(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (updatedObj != null)
-            {
-                await _reservationService.UpdateAsync(id, updatedObj);
-                return NoContent();
-            }
+            var created = await _reservationService.CreateAsync(reservation);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
-        catch
+        catch (InvalidOperationException ex)
         {
-            // Ignore deserialization error and fall back
+            // 400 Bad Request if 7-day booking rule fails
+            return BadRequest(new { message = ex.Message });
         }
-
-        return NoContent();
     }
 
-    // Handles PUT/PATCH/POST /api/reservations/{id}/status
-    [HttpPut("{id}/status")]
-    [HttpPatch("{id}/status")]
-    [HttpPost("{id}/status")]
-    public async Task<IActionResult> UpdateStatus(string id, [FromBody] JsonObject payload)
-    {
-        string? status = null;
-
-        if (payload.TryGetPropertyValue("status", out var statusNode) && statusNode != null)
-        {
-            status = statusNode.ToString();
-        }
-        else if (payload.TryGetPropertyValue("Status", out var statusNodeUpper) && statusNodeUpper != null)
-        {
-            status = statusNodeUpper.ToString();
-        }
-
-        if (string.IsNullOrEmpty(status))
-        {
-            return BadRequest(new { message = "Status field is required." });
-        }
-
-        var success = await _reservationService.UpdateStatusAsync(id, status);
-        if (!success)
-        {
-            return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
-        }
-
-        return NoContent();
-    }
-
-    // Handles POST/PUT /api/reservations/{id}/approve
+    // ─── APPROVE ──────────────────────────────────────────────────────────────
+    // POST: api/reservations/{id}/approve
     [HttpPost("{id}/approve")]
     [HttpPut("{id}/approve")]
-    [HttpPatch("{id}/approve")]
     public async Task<IActionResult> Approve(string id)
     {
-        var success = await _reservationService.UpdateStatusAsync(id, "Approved");
+        var success = await _reservationService.ApproveAsync(id);
+
         if (!success)
         {
             return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
         }
 
-        return NoContent();
+        return Ok(new { message = "Reservation successfully approved." });
     }
 
-    // Handles POST/PUT /api/reservations/{id}/reject
+    // ─── REJECT ───────────────────────────────────────────────────────────────
+    // POST: api/reservations/{id}/reject
     [HttpPost("{id}/reject")]
     [HttpPut("{id}/reject")]
-    [HttpPatch("{id}/reject")]
     public async Task<IActionResult> Reject(string id)
     {
-        var success = await _reservationService.UpdateStatusAsync(id, "Rejected");
+        var success = await _reservationService.RejectAsync(id);
+
         if (!success)
         {
             return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
         }
 
-        return NoContent();
+        return Ok(new { message = "Reservation successfully rejected." });
     }
 
+    // ─── CANCEL ───────────────────────────────────────────────────────────────
+    // POST: api/reservations/{id}/cancel
+    [HttpPost("{id}/cancel")]
+    [HttpPut("{id}/cancel")]
+    public async Task<IActionResult> Cancel(string id)
+    {
+        try
+        {
+            var success = await _reservationService.CancelAsync(id);
+
+            if (!success)
+            {
+                return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
+            }
+
+            return Ok(new { message = "Reservation successfully cancelled." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // 400 Bad Request if 12-hour cancellation rule fails
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // ─── UPDATE ───────────────────────────────────────────────────────────────
+    // PUT: api/reservations/{id}
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(string id, [FromBody] Reservation updatedReservation)
+    {
+        try
+        {
+            var success = await _reservationService.UpdateAsync(id, updatedReservation);
+
+            if (!success)
+            {
+                return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
+            }
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // ─── DELETE ───────────────────────────────────────────────────────────────
+    // DELETE: api/reservations/{id}
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {
         var success = await _reservationService.DeleteAsync(id);
+
         if (!success)
         {
             return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
