@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace SolarAPI.Models;
 
+[BsonIgnoreExtraElements]
 public class Prosumer
 {
     [BsonId]

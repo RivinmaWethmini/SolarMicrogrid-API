@@ -1,3 +1,12 @@
+// ============================================================================
+// File: ReservationController.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Author: Member 4 (Energy Reservation & QR Dispatch)
+// Description: RESTful Web API controller for reservation CRUD,
+//              7-day booking rule, 12-hour cancellation rule, and QR dispatch.
+// ============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using SolarAPI.Models;
 using SolarAPI.Services;
@@ -5,7 +14,7 @@ using SolarAPI.Services;
 namespace SolarAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/reservations")] // FIX: Consistent lowercase route (was api/[controller] = api/Reservation)
 public class ReservationController : ControllerBase
 {
     private readonly IReservationService _reservationService;
@@ -16,7 +25,7 @@ public class ReservationController : ControllerBase
     }
 
     // ─── GET ALL ──────────────────────────────────────────────────────────────
-    // GET: api/Reservation
+    // GET: api/reservations
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -24,8 +33,26 @@ public class ReservationController : ControllerBase
         return Ok(reservations);
     }
 
+    // ─── GET STATS (Dashboard) ────────────────────────────────────────────────
+    // GET: api/reservations/stats
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var stats = await _reservationService.GetStatsAsync();
+        return Ok(stats);
+    }
+
+    // ─── GET BY PROSUMER ──────────────────────────────────────────────────────
+    // GET: api/reservations/prosumer/{prosumerId}
+    [HttpGet("prosumer/{prosumerId}")]
+    public async Task<IActionResult> GetByProsumer(string prosumerId)
+    {
+        var reservations = await _reservationService.GetByProsumerIdAsync(prosumerId);
+        return Ok(reservations);
+    }
+
     // ─── GET BY ID ────────────────────────────────────────────────────────────
-    // GET: api/Reservation/{id}
+    // GET: api/reservations/{id}
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {
@@ -39,8 +66,23 @@ public class ReservationController : ControllerBase
         return Ok(reservation);
     }
 
+    // ─── GET QR PAYLOAD ───────────────────────────────────────────────────────
+    // GET: api/reservations/{id}/qr
+    [HttpGet("{id}/qr")]
+    public async Task<IActionResult> GetQrPayload(string id)
+    {
+        var reservation = await _reservationService.GetByIdAsync(id);
+        if (reservation == null)
+            return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
+
+        if (!string.Equals(reservation.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "QR code is only available for Approved reservations." });
+
+        return Ok(new { reservationId = reservation.Id, qrPayload = reservation.QrPayload });
+    }
+
     // ─── CREATE ───────────────────────────────────────────────────────────────
-    // POST: api/Reservation
+    // POST: api/reservations
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] Reservation reservation)
     {
@@ -51,13 +93,14 @@ public class ReservationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // Returns 400 Bad Request if 7-day validation rule fails
+            // 400 Bad Request if 7-day booking rule fails
             return BadRequest(new { message = ex.Message });
         }
     }
 
     // ─── APPROVE ──────────────────────────────────────────────────────────────
-    // PUT: api/Reservation/{id}/approve
+    // POST: api/reservations/{id}/approve
+    [HttpPost("{id}/approve")]
     [HttpPut("{id}/approve")]
     public async Task<IActionResult> Approve(string id)
     {
@@ -71,8 +114,25 @@ public class ReservationController : ControllerBase
         return Ok(new { message = "Reservation successfully approved." });
     }
 
+    // ─── REJECT ───────────────────────────────────────────────────────────────
+    // POST: api/reservations/{id}/reject
+    [HttpPost("{id}/reject")]
+    [HttpPut("{id}/reject")]
+    public async Task<IActionResult> Reject(string id)
+    {
+        var success = await _reservationService.RejectAsync(id);
+
+        if (!success)
+        {
+            return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
+        }
+
+        return Ok(new { message = "Reservation successfully rejected." });
+    }
+
     // ─── CANCEL ───────────────────────────────────────────────────────────────
-    // PUT: api/Reservation/{id}/cancel
+    // POST: api/reservations/{id}/cancel
+    [HttpPost("{id}/cancel")]
     [HttpPut("{id}/cancel")]
     public async Task<IActionResult> Cancel(string id)
     {
@@ -89,13 +149,13 @@ public class ReservationController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // Returns 400 Bad Request if 12-hour cancellation rule fails
+            // 400 Bad Request if 12-hour cancellation rule fails
             return BadRequest(new { message = ex.Message });
         }
     }
 
     // ─── UPDATE ───────────────────────────────────────────────────────────────
-    // PUT: api/Reservation/{id}
+    // PUT: api/reservations/{id}
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] Reservation updatedReservation)
     {
@@ -117,7 +177,7 @@ public class ReservationController : ControllerBase
     }
 
     // ─── DELETE ───────────────────────────────────────────────────────────────
-    // DELETE: api/Reservation/{id}
+    // DELETE: api/reservations/{id}
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {
