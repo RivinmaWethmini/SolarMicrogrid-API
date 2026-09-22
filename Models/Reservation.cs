@@ -1,3 +1,12 @@
+// ============================================================================
+// File: Reservation.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Author: Member 4 (Energy Reservation & QR Dispatch)
+// Description: Domain model representing energy slot reservation entity,
+//              NoSQL MongoDB BSON mappings, validation annotations, and QR fields.
+// ============================================================================
+
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using MongoDB.Bson;

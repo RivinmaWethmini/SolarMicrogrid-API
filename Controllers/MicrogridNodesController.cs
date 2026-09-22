@@ -1,3 +1,10 @@
+// ============================================================================
+// File: MicrogridNodesController.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Controller for microgrid nodes querying and operational status.
+// ============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using SolarAPI.Models;
@@ -15,9 +22,13 @@ public class MicrogridNodesController : ControllerBase
         _nodes = database.GetCollection<MicrogridNode>("MicrogridNodes");
     }
 
+    /// <summary>
+    /// Retrieves all active solar microgrid nodes and their operational capacity specs.
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<object>>> GetAll()
     {
+        // Inline comment: Query microgrid nodes from database collection with fallback defaults
         var list = await _nodes.Find(_ => true).ToListAsync();
         if (list == null || list.Count == 0)
         {
