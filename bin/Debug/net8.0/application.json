@@ -4,7 +4,6 @@
       "Default": "Information",
       "Microsoft.AspNetCore": "Warning"
     }
-    
   },
   "AllowedHosts": "*",
   "MongoDBSettings": {
@@ -12,4 +11,3 @@
     "DatabaseName": "SolarDb"
   }
 }
-

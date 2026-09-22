@@ -104,14 +104,21 @@ public class ReservationController : ControllerBase
     [HttpPut("{id}/approve")]
     public async Task<IActionResult> Approve(string id)
     {
-        var success = await _reservationService.ApproveAsync(id);
-
-        if (!success)
+        try
         {
-            return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
-        }
+            var success = await _reservationService.ApproveAsync(id);
 
-        return Ok(new { message = "Reservation successfully approved." });
+            if (!success)
+            {
+                return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
+            }
+
+            return Ok(new { message = "Reservation successfully approved." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     // ─── REJECT ───────────────────────────────────────────────────────────────
@@ -120,14 +127,21 @@ public class ReservationController : ControllerBase
     [HttpPut("{id}/reject")]
     public async Task<IActionResult> Reject(string id)
     {
-        var success = await _reservationService.RejectAsync(id);
-
-        if (!success)
+        try
         {
-            return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
-        }
+            var success = await _reservationService.RejectAsync(id);
 
-        return Ok(new { message = "Reservation successfully rejected." });
+            if (!success)
+            {
+                return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
+            }
+
+            return Ok(new { message = "Reservation successfully rejected." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     // ─── CANCEL ───────────────────────────────────────────────────────────────

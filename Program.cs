@@ -18,7 +18,38 @@ builder.Services.Configure<MongoDBSettings>(
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
     var settings = builder.Configuration.GetSection("MongoDBSettings").Get<MongoDBSettings>();
-    return new MongoClient(settings?.ConnectionString ?? "mongodb://localhost:27017");
+    var connStr = settings?.ConnectionString ?? "mongodb://127.0.0.1:27017";
+
+    MongoClient CreateClient(string connectionString, int timeoutSeconds = 6)
+    {
+        var mongoSettings = MongoClientSettings.FromConnectionString(connectionString);
+        mongoSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+        if (mongoSettings.UseTls)
+        {
+            mongoSettings.SslSettings = new SslSettings
+            {
+                CheckCertificateRevocation = false,
+                ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true,
+                EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13
+            };
+        }
+        return new MongoClient(mongoSettings);
+    }
+
+    try
+    {
+        var client = CreateClient(connStr, timeoutSeconds: 6);
+        var dbName = settings?.DatabaseName ?? "SolarDb";
+        client.GetDatabase(dbName).RunCommand((Command<MongoDB.Bson.BsonDocument>)"{ping:1}");
+        Console.WriteLine($"[INFO] Successfully connected to MongoDB at: {connStr}");
+        return client;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[WARNING] Primary MongoDB connection failed: {ex.Message}. Falling back to local MongoDB on 127.0.0.1:27017...");
+        return CreateClient("mongodb://127.0.0.1:27017", timeoutSeconds: 3);
+    }
 });
 
 builder.Services.AddScoped<IMongoDatabase>(sp =>
