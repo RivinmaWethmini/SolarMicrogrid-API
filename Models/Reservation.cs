@@ -112,4 +112,20 @@ public class Reservation
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
+
+    // ─── Dispatch Tracking (QR Scan Verification) ──────────────────────────────
+    // Author: Member 4 — populated by POST /api/qr/verify on successful operator scan
+
+    [BsonElement("isDispatched")]
+    [JsonPropertyName("isDispatched")]
+    public bool IsDispatched { get; set; } = false;
+
+    [BsonElement("dispatchedAt")]
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    [JsonPropertyName("dispatchedAt")]
+    public DateTime? DispatchedAt { get; set; }
+
+    [BsonElement("dispatchedBy")]
+    [JsonPropertyName("dispatchedBy")]
+    public string DispatchedBy { get; set; } = string.Empty;
+}
