@@ -25,15 +25,25 @@ public class MicrogridNode
     [BsonElement("currentLoadKw")]
     public double CurrentLoadKw { get; set; }
 
-    [BsonElement("status")]
-    public string Status { get; set; } = "Active";
-
     [BsonElement("latitude")]
     public double Latitude { get; set; }
 
     [BsonElement("longitude")]
     public double Longitude { get; set; }
 
+    [BsonElement("capacityKWh")]
+    public double CapacityKWh { get; set; }
+
+    [BsonElement("batterySlots")]
+    public int BatterySlots { get; set; }
+
+    [BsonElement("schedule")]
+    public string? Schedule { get; set; }
+
+    [BsonElement("status")]
+    public string Status { get; set; } = "Active";
+
     [BsonElement("createdAt")]
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
