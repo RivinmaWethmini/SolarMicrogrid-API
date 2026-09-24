@@ -10,5 +10,6 @@ public interface IProsumerService
     Task<Prosumer> CreateAsync(Prosumer prosumer);
     Task<bool> UpdateAsync(string id, Prosumer updatedProsumer);
     Task<bool> DeactivateAsync(string id);
+    Task<bool> ReactivateAsync(string nic);
     Task<bool> DeleteAsync(string id);
 }

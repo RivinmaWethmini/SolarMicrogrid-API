@@ -19,18 +19,20 @@ public class ProsumerService : IProsumerService
 
     public async Task<IEnumerable<Prosumer>> GetAvailableAsync()
     {
-        return await _prosumers.Find(p => p.IsAvailable && p.AvailableEnergyKw > 0).ToListAsync();
+        return await _prosumers
+            .Find(p => p.IsAvailable && p.AvailableEnergyKw > 0)
+            .ToListAsync();
     }
 
-    public async Task<Prosumer?> GetByIdAsync(string id)
+    public async Task<Prosumer?> GetByIdAsync(string nic)
     {
-        return await _prosumers.Find(p => p.Id == id).FirstOrDefaultAsync();
+        return await _prosumers
+            .Find(p => p.NIC == nic)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<Prosumer> CreateAsync(Prosumer prosumer)
     {
-        // Business logic: enforce clean creation state
-        prosumer.Id = null; // Let MongoDB generate the ObjectId
         prosumer.CreatedAt = DateTime.UtcNow;
         prosumer.IsAvailable = true;
 
@@ -38,36 +40,54 @@ public class ProsumerService : IProsumerService
         return prosumer;
     }
 
-    public async Task<bool> UpdateAsync(string id, Prosumer updatedProsumer)
+    public async Task<bool> UpdateAsync(string nic, Prosumer updatedProsumer)
     {
-        // Business logic: verify existence before update
-        var existing = await GetByIdAsync(id);
+        var existing = await GetByIdAsync(nic);
+
         if (existing == null)
         {
             return false;
         }
 
-        updatedProsumer.Id = id;
-        updatedProsumer.CreatedAt = existing.CreatedAt; // Preserve original creation timestamp
+        updatedProsumer.NIC = nic;
+        updatedProsumer.CreatedAt = existing.CreatedAt;
 
-        var result = await _prosumers.ReplaceOneAsync(p => p.Id == id, updatedProsumer);
+        var result = await _prosumers.ReplaceOneAsync(
+            p => p.NIC == nic,
+            updatedProsumer);
+
         return result.IsAcknowledged && result.ModifiedCount > 0;
     }
 
-    public async Task<bool> DeactivateAsync(string id)
+    public async Task<bool> DeactivateAsync(string nic)
     {
-        // Business logic: set availability to false and zero out active available energy offer
         var updateDefinition = Builders<Prosumer>.Update
             .Set(p => p.IsAvailable, false)
             .Set(p => p.AvailableEnergyKw, 0);
 
-        var result = await _prosumers.UpdateOneAsync(p => p.Id == id, updateDefinition);
+        var result = await _prosumers.UpdateOneAsync(
+            p => p.NIC == nic,
+            updateDefinition);
+
+        return result.IsAcknowledged && result.ModifiedCount > 0;
+    }
+    public async Task<bool> ReactivateAsync(string nic)
+    {
+        var updateDefinition = Builders<Prosumer>.Update
+            .Set(p => p.IsAvailable, true);
+
+        var result = await _prosumers.UpdateOneAsync(
+            p => p.NIC == nic,
+            updateDefinition);
+
         return result.IsAcknowledged && result.ModifiedCount > 0;
     }
 
-    public async Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(string nic)
     {
-        var result = await _prosumers.DeleteOneAsync(p => p.Id == id);
+        var result = await _prosumers.DeleteOneAsync(
+            p => p.NIC == nic);
+
         return result.IsAcknowledged && result.DeletedCount > 0;
     }
 }

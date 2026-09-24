@@ -29,13 +29,17 @@ public class ProsumerController : ControllerBase
         return Ok(prosumers);
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Prosumer>> GetById(string id)
+    [HttpGet("{nic}")]
+    public async Task<ActionResult<Prosumer>> GetById(string nic)
     {
-        var prosumer = await _prosumerService.GetByIdAsync(id);
+        var prosumer = await _prosumerService.GetByIdAsync(nic);
+
         if (prosumer == null)
         {
-            return NotFound(new { message = $"Prosumer with ID '{id}' was not found." });
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return Ok(prosumer);
@@ -45,40 +49,73 @@ public class ProsumerController : ControllerBase
     public async Task<ActionResult<Prosumer>> Create([FromBody] Prosumer prosumer)
     {
         var created = await _prosumerService.CreateAsync(prosumer);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { nic = created.NIC },
+            created);
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, [FromBody] Prosumer prosumer)
+    [HttpPut("{nic}")]
+    public async Task<IActionResult> Update(
+        string nic,
+        [FromBody] Prosumer prosumer)
     {
-        var success = await _prosumerService.UpdateAsync(id, prosumer);
+        var success = await _prosumerService.UpdateAsync(nic, prosumer);
+
         if (!success)
         {
-            return NotFound(new { message = $"Prosumer with ID '{id}' was not found." });
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return NoContent();
     }
 
-    [HttpPatch("{id}/deactivate")]
-    public async Task<IActionResult> Deactivate(string id)
+    [HttpPatch("{nic}/deactivate")]
+    public async Task<IActionResult> Deactivate(string nic)
     {
-        var success = await _prosumerService.DeactivateAsync(id);
+        var success = await _prosumerService.DeactivateAsync(nic);
+
         if (!success)
         {
-            return NotFound(new { message = $"Prosumer with ID '{id}' was not found." });
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
+        }
+
+        return NoContent();
+    }
+    [HttpPatch("{nic}/reactivate")]
+    public async Task<IActionResult> Reactivate(string nic)
+    {
+        var success = await _prosumerService.ReactivateAsync(nic);
+
+        if (!success)
+        {
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [HttpDelete("{nic}")]
+    public async Task<IActionResult> Delete(string nic)
     {
-        var success = await _prosumerService.DeleteAsync(id);
+        var success = await _prosumerService.DeleteAsync(nic);
+
         if (!success)
         {
-            return NotFound(new { message = $"Prosumer with ID '{id}' was not found." });
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return NoContent();

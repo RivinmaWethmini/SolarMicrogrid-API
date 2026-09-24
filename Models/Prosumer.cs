@@ -7,8 +7,8 @@ namespace SolarAPI.Models;
 public class Prosumer
 {
     [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string? Id { get; set; }
+    [BsonElement("nic")]
+    public string NIC { get; set; } = string.Empty;
 
     [BsonRepresentation(BsonType.ObjectId)]
     [BsonElement("userId")]
