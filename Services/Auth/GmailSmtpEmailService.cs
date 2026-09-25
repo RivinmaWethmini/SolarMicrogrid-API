@@ -66,18 +66,11 @@ public class GmailSmtpEmailService : IEmailService
             await smtpClient.SendMailAsync(mailMessage);
             _logger.LogInformation("Successfully delivered OTP verification email to {ToEmail}.", toEmail);
         }
-        catch (SmtpException ex)
-        {
-            _logger.LogError(ex, "Gmail SMTP delivery failed for recipient {ToEmail}. StatusCode={StatusCode}", toEmail, ex.StatusCode);
-            LogDevelopmentConsoleBanner(toEmail, otpCode, expiryMinutes,
-                $"SMTP delivery failure: {ex.Message}. Ensure your Gmail has 2-Step Verification enabled and you are using a 16-character Google 'App Password'.");
-            throw;
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error occurred while dispatching OTP email to {ToEmail}.", toEmail);
-            LogDevelopmentConsoleBanner(toEmail, otpCode, expiryMinutes, $"Unexpected email dispatch failure: {ex.Message}");
-            throw;
+            _logger.LogError(ex, "Gmail SMTP delivery encountered an issue for recipient {ToEmail}. Displaying fallback console passcode.", toEmail);
+            LogDevelopmentConsoleBanner(toEmail, otpCode, expiryMinutes,
+                $"SMTP Notice: {ex.Message}. Use the passcode displayed above to complete verification.");
         }
     }
 

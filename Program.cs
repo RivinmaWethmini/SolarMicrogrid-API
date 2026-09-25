@@ -45,7 +45,7 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
 
     try
     {
-        var client = CreateClient(connStr, timeoutSeconds: 3);
+        var client = CreateClient(connStr, timeoutSeconds: 10);
         var dbName = settings?.DatabaseName ?? "SolarDb";
         client.GetDatabase(dbName).RunCommand((Command<MongoDB.Bson.BsonDocument>)"{ping:1}");
         Console.WriteLine($"[INFO] Successfully connected to MongoDB at: {connStr}");
