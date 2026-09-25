@@ -4,9 +4,9 @@ namespace SolarAPI.DTOs.Auth;
 
 public class VerifyOtpRequestDto
 {
-    [Required(ErrorMessage = "Email address is required.")]
-    [EmailAddress(ErrorMessage = "Invalid email address format.")]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
+
+    public string? Identifier { get; set; }
 
     [Required(ErrorMessage = "OTP code is required.")]
     [RegularExpression(@"^\d{6}$", ErrorMessage = "OTP must be exactly 6 digits.")]
@@ -14,4 +14,9 @@ public class VerifyOtpRequestDto
 
     [MaxLength(200, ErrorMessage = "Device info cannot exceed 200 characters.")]
     public string? DeviceInfo { get; set; }
+
+    public string? FullName { get; set; }
+    public string? Nic { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
 }

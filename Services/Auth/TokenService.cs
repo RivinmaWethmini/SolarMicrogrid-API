@@ -31,7 +31,8 @@ public class TokenService : ITokenService
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Role, user.Role),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new("sid", sessionId)
+            new("sid", sessionId),
+            new("approvalStatus", user.ApprovalStatus ?? "Approved")
         };
 
         // Add custom permission claims

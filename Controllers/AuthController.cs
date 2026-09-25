@@ -22,11 +22,67 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Request a 6-digit OTP code sent to the specified email address.
-    /// Enforces 60-second cooldown between requests and 5-minute code expiration.
+    /// Register a new account with email, username, password, full name, NIC, and role.
+    /// Newly registered Prosumers require Operator Approval before access to trading features.
+    /// </summary>
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var ip = GetClientIpAddress();
+        var userAgent = GetUserAgent();
+
+        var result = await _authService.RegisterAsync(request, ip, userAgent);
+
+        if (!result.Success)
+        {
+            return StatusCode(result.StatusCode, new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Data);
+    }
+
+    /// <summary>
+    /// Authenticate using Email or Username with Password.
+    /// Returns Access + Refresh tokens upon successful authentication.
+    /// </summary>
+    [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var ip = GetClientIpAddress();
+        var userAgent = GetUserAgent();
+
+        var result = await _authService.LoginAsync(request, ip, userAgent);
+
+        if (!result.Success)
+        {
+            return StatusCode(result.StatusCode, new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Data);
+    }
+
+    /// <summary>
+    /// Request a 6-digit OTP code sent to the specified email address for new registration.
+    /// Checks that the email is not already registered.
     /// </summary>
     [HttpPost("otp/send")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SendOtpResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto request)
@@ -46,7 +102,37 @@ public class AuthController : ControllerBase
             return StatusCode(result.StatusCode, new { message = result.ErrorMessage });
         }
 
-        return Ok(new { message = result.Data });
+        return Ok(result.Data);
+    }
+
+    /// <summary>
+    /// Dispatch a 6-digit OTP to a REGISTERED user's email address by identifier (username or email).
+    /// Automatically fetches the registered email and returns a masked preview for privacy.
+    /// Only registered active accounts are permitted to request login OTPs.
+    /// </summary>
+    [HttpPost("otp/send-login")]
+    [ProducesResponseType(typeof(SendOtpResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> SendLoginOtp([FromBody] SendLoginOtpRequestDto request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var ip = GetClientIpAddress();
+        var userAgent = GetUserAgent();
+
+        var result = await _authService.SendLoginOtpAsync(request, ip, userAgent);
+
+        if (!result.Success)
+        {
+            return StatusCode(result.StatusCode, new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Data);
     }
 
     /// <summary>

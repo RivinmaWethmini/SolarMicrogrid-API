@@ -15,7 +15,10 @@ public class AuthResult<T>
 
 public interface IAuthService
 {
-    Task<AuthResult<string>> SendOtpAsync(SendOtpRequestDto request, string? ipAddress, string? userAgent);
+    Task<AuthResult<AuthResponseDto>> RegisterAsync(RegisterRequestDto request, string? ipAddress, string? userAgent);
+    Task<AuthResult<AuthResponseDto>> LoginAsync(LoginRequestDto request, string? ipAddress, string? userAgent);
+    Task<AuthResult<SendOtpResponseDto>> SendOtpAsync(SendOtpRequestDto request, string? ipAddress, string? userAgent);
+    Task<AuthResult<SendOtpResponseDto>> SendLoginOtpAsync(SendLoginOtpRequestDto request, string? ipAddress, string? userAgent);
     Task<AuthResult<AuthResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto request, string? ipAddress, string? userAgent);
     Task<AuthResult<AuthResponseDto>> RefreshTokenAsync(RefreshTokenRequestDto request, string? ipAddress, string? userAgent);
     Task<AuthResult<bool>> LogoutAsync(string userId, string? sessionId, string? rawRefreshToken, string? ipAddress, string? userAgent);
