@@ -7,14 +7,17 @@
 //              7-day booking rule, 12-hour cancellation rule, and QR dispatch.
 // ============================================================================
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarAPI.Models;
+using SolarAPI.Models.Auth;
 using SolarAPI.Services;
 
 namespace SolarAPI.Controllers;
 
 [ApiController]
 [Route("api/reservations")] // FIX: Consistent lowercase route (was api/[controller] = api/Reservation)
+[Authorize]
 public class ReservationController : ControllerBase
 {
     private readonly IReservationService _reservationService;
@@ -98,10 +101,11 @@ public class ReservationController : ControllerBase
         }
     }
 
-    // ─── APPROVE ──────────────────────────────────────────────────────────────
+    // ─── APPROVE (Admin / Grid Operator Only) ──────────────────────────────────
     // POST: api/reservations/{id}/approve
     [HttpPost("{id}/approve")]
     [HttpPut("{id}/approve")]
+    [Authorize(Roles = AuthRoles.Admin)]
     public async Task<IActionResult> Approve(string id)
     {
         try
@@ -121,10 +125,11 @@ public class ReservationController : ControllerBase
         }
     }
 
-    // ─── REJECT ───────────────────────────────────────────────────────────────
+    // ─── REJECT (Admin / Grid Operator Only) ───────────────────────────────────
     // POST: api/reservations/{id}/reject
     [HttpPost("{id}/reject")]
     [HttpPut("{id}/reject")]
+    [Authorize(Roles = AuthRoles.Admin)]
     public async Task<IActionResult> Reject(string id)
     {
         try
@@ -168,9 +173,10 @@ public class ReservationController : ControllerBase
         }
     }
 
-    // ─── UPDATE ───────────────────────────────────────────────────────────────
+    // ─── UPDATE (Admin / Grid Operator Only) ───────────────────────────────────
     // PUT: api/reservations/{id}
     [HttpPut("{id}")]
+    [Authorize(Roles = AuthRoles.Admin)]
     public async Task<IActionResult> Update(string id, [FromBody] Reservation updatedReservation)
     {
         try
@@ -190,9 +196,10 @@ public class ReservationController : ControllerBase
         }
     }
 
-    // ─── DELETE ───────────────────────────────────────────────────────────────
+    // ─── DELETE (Admin / Grid Operator Only) ───────────────────────────────────
     // DELETE: api/reservations/{id}
     [HttpDelete("{id}")]
+    [Authorize(Roles = AuthRoles.Admin)]
     public async Task<IActionResult> Delete(string id)
     {
         var success = await _reservationService.DeleteAsync(id);
