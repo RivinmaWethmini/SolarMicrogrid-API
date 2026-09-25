@@ -78,9 +78,12 @@ var jwtSection = builder.Configuration.GetSection(JwtSettings.SectionName);
 builder.Services.Configure<JwtSettings>(jwtSection);
 var jwtSettings = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
 
+var smtpSection = builder.Configuration.GetSection(SmtpSettings.SectionName);
+builder.Services.Configure<SmtpSettings>(smtpSection);
+
 builder.Services.AddSingleton<IOtpService, OtpService>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
-builder.Services.AddTransient<IEmailService, MockEmailService>();
+builder.Services.AddScoped<IEmailService, GmailSmtpEmailService>();
 builder.Services.AddScoped<IAuthAuditService, AuthAuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuthDatabaseInitializer, AuthDatabaseInitializer>();
