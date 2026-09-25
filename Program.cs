@@ -3,10 +3,17 @@
 // Project: SolarAPI - Smart Solar Microgrid Trading System
 // ============================================================================
 
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
 using SolarAPI.Configurations;
 using SolarAPI.Models;
+using SolarAPI.Security;
 using SolarAPI.Services;
+using SolarAPI.Services.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +73,46 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 builder.Services.AddScoped<IProsumerService, ProsumerService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 
+// ─── Enterprise Auth & Security Services ───────────────────────────────────────
+var jwtSection = builder.Configuration.GetSection(JwtSettings.SectionName);
+builder.Services.Configure<JwtSettings>(jwtSection);
+var jwtSettings = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
+
+builder.Services.AddSingleton<IOtpService, OtpService>();
+builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddTransient<IEmailService, MockEmailService>();
+builder.Services.AddScoped<IAuthAuditService, AuthAuditService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthDatabaseInitializer, AuthDatabaseInitializer>();
+
+// ─── JWT Authentication ───────────────────────────────────────────────────────
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwtSettings.Audience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+// ─── Dynamic RBAC & Permission Policies ───────────────────────────────────────
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization();
+
 // ─── CORS Policy ──────────────────────────────────────────────────────────────
 // FIX: CORS was missing — needed for React web client (SolarWeb) to call this API
 builder.Services.AddCors(options =>
@@ -80,11 +127,39 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Solar Microgrid API",
+        Version = "v1",
+        Description = "Smart Solar Microgrid Trading & Reservation System with Email + OTP Authentication & RBAC"
+    });
 
-// TODO (Member 2): When JWT authentication is ready, add the following:
-// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//     .AddJwtBearer(options => { /* JWT config from Member 2 */ });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and your token.\nExample: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -102,8 +177,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
-// TODO (Member 2): Uncomment when JWT is integrated:
-// app.UseAuthentication();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -114,6 +188,11 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
+
+        // Initialize Auth MongoDB Collections and Security Indexes
+        var authDbInit = scope.ServiceProvider.GetRequiredService<IAuthDatabaseInitializer>();
+        authDbInit.InitializeAsync().GetAwaiter().GetResult();
+
         var proCol = db.GetCollection<Prosumer>("Prosumers");
         var resCol = db.GetCollection<Reservation>("Reservations");
 
