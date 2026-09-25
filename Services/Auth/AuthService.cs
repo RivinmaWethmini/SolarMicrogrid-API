@@ -39,11 +39,253 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
-    public async Task<AuthResult<string>> SendOtpAsync(SendOtpRequestDto request, string? ipAddress, string? userAgent)
+    public async Task<AuthResult<AuthResponseDto>> RegisterAsync(RegisterRequestDto request, string? ipAddress, string? userAgent)
     {
         string email = request.Email.Trim().ToLowerInvariant();
 
-        // 1. Check for cooldown on recent OTP
+        // 1. Check if email is already taken
+        var existingEmail = await _usersCollection.Find(u => u.Email == email).FirstOrDefaultAsync();
+        if (existingEmail != null)
+        {
+            return AuthResult<AuthResponseDto>.Fail("An account with this email address is already registered.", 400);
+        }
+
+        // 2. Check if username is already taken (if provided)
+        string? username = !string.IsNullOrWhiteSpace(request.Username) ? request.Username.Trim() : null;
+        if (username != null)
+        {
+            var lowerUsername = username.ToLowerInvariant();
+            var existingUsername = await _usersCollection.Find(u => u.Username != null && u.Username.ToLower() == lowerUsername).FirstOrDefaultAsync();
+            if (existingUsername != null)
+            {
+                return AuthResult<AuthResponseDto>.Fail("This username is already taken. Please choose another.", 400);
+            }
+        }
+
+        // 3. Verify OTP if provided
+        if (!string.IsNullOrWhiteSpace(request.Otp))
+        {
+            var otpRecord = await _otpCollection
+                .Find(o => o.Email == email && !o.IsUsed)
+                .SortByDescending(o => o.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (otpRecord == null || otpRecord.IsExpired)
+            {
+                return AuthResult<AuthResponseDto>.Fail("No active verification code found or the code has expired. Please request a new code.", 400);
+            }
+
+            if (otpRecord.HasExceededAttempts)
+            {
+                await _otpCollection.UpdateOneAsync(
+                    o => o.Id == otpRecord.Id,
+                    Builders<OtpVerification>.Update.Set(o => o.IsUsed, true));
+                return AuthResult<AuthResponseDto>.Fail("Maximum verification attempts exceeded. Please request a new code.", 400);
+            }
+
+            bool isOtpValid = _otpService.VerifyOtp(request.Otp, otpRecord.OtpHash);
+            if (!isOtpValid)
+            {
+                int updatedAttempts = otpRecord.AttemptsCount + 1;
+                var update = Builders<OtpVerification>.Update.Set(o => o.AttemptsCount, updatedAttempts);
+                if (updatedAttempts >= 5) update = update.Set(o => o.IsUsed, true);
+                await _otpCollection.UpdateOneAsync(o => o.Id == otpRecord.Id, update);
+                int remaining = Math.Max(0, 5 - updatedAttempts);
+                return AuthResult<AuthResponseDto>.Fail(
+                    remaining > 0 ? $"Invalid verification code. {remaining} attempt(s) remaining." : "Maximum verification attempts exceeded.",
+                    400);
+            }
+
+            // Mark OTP as used
+            await _otpCollection.UpdateOneAsync(
+                o => o.Id == otpRecord.Id,
+                Builders<OtpVerification>.Update.Set(o => o.IsUsed, true));
+        }
+
+        // 4. Hash password using BCrypt
+        string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        // 4. Resolve Role & Permissions
+        string assignedRole = !string.IsNullOrWhiteSpace(request.Role) && AuthRoles.IsValidRole(request.Role)
+            ? request.Role
+            : AuthRoles.Consumer;
+
+        var permissions = AuthPermissions.GetDefaultPermissionsForRole(assignedRole);
+
+        // BUSINESS RULE: Prosumers require Operator Approval before accessing full trading features
+        string approvalStatus = string.Equals(assignedRole, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)
+            ? "PendingApproval"
+            : "Approved";
+
+        var user = new AuthUser
+        {
+            Email = email,
+            Username = username,
+            PasswordHash = passwordHash,
+            FullName = request.FullName?.Trim(),
+            Nic = request.Nic?.Trim(),
+            Role = assignedRole,
+            Permissions = permissions,
+            ApprovalStatus = approvalStatus,
+            IsActive = true,
+            IsVerified = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _usersCollection.InsertOneAsync(user);
+        await _auditService.LogAsync(user.Id, "USER_REGISTERED", ipAddress, userAgent, new()
+        {
+            ["role"] = user.Role,
+            ["approvalStatus"] = user.ApprovalStatus,
+            ["username"] = user.Username ?? "none",
+            ["authType"] = "password"
+        });
+
+        // 5. Create Session & Tokens
+        string rawRefreshToken = _tokenService.GenerateRefreshToken();
+        string refreshTokenHash = _tokenService.HashToken(rawRefreshToken);
+
+        var session = new UserSession
+        {
+            UserId = user.Id!,
+            RefreshTokenHash = refreshTokenHash,
+            DeviceInfo = !string.IsNullOrWhiteSpace(request.DeviceInfo) ? request.DeviceInfo : (userAgent ?? "Unknown Client"),
+            UserAgent = userAgent ?? "Unknown",
+            IpAddress = ipAddress ?? "Unknown",
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _sessionsCollection.InsertOneAsync(session);
+
+        var (accessToken, expiresInSeconds) = _tokenService.GenerateAccessToken(user, session.Id!);
+
+        var responseDto = new AuthResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = rawRefreshToken,
+            TokenType = "Bearer",
+            ExpiresIn = expiresInSeconds,
+            SessionId = session.Id!,
+            User = MapToUserDto(user)
+        };
+
+        return AuthResult<AuthResponseDto>.Ok(responseDto);
+    }
+
+    public async Task<AuthResult<AuthResponseDto>> LoginAsync(LoginRequestDto request, string? ipAddress, string? userAgent)
+    {
+        string identifier = request.Identifier.Trim();
+        string lowerIdentifier = identifier.ToLowerInvariant();
+
+        // 1. Locate user by email OR username (case-insensitive)
+        var user = await _usersCollection.Find(u =>
+            u.Email.ToLower() == lowerIdentifier ||
+            (u.Username != null && u.Username.ToLower() == lowerIdentifier)
+        ).FirstOrDefaultAsync();
+
+        if (user == null)
+        {
+            await _auditService.LogAsync(null, "LOGIN_FAILED_NOT_FOUND", ipAddress, userAgent, new()
+            {
+                ["identifier"] = identifier
+            });
+            return AuthResult<AuthResponseDto>.Fail("Invalid email/username or password.", 401);
+        }
+
+        // 2. Check password
+        if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            await _auditService.LogAsync(user.Id, "LOGIN_FAILED_INVALID_PASSWORD", ipAddress, userAgent);
+            return AuthResult<AuthResponseDto>.Fail("Invalid email/username or password.", 401);
+        }
+
+        // 3. Verify active status
+        if (!user.IsActive)
+        {
+            await _auditService.LogAsync(user.Id, "LOGIN_FAILED_DEACTIVATED", ipAddress, userAgent);
+            return AuthResult<AuthResponseDto>.Fail("This account has been deactivated. Please contact support.", 403);
+        }
+
+        // 4. Create Session & Tokens
+        string rawRefreshToken = _tokenService.GenerateRefreshToken();
+        string refreshTokenHash = _tokenService.HashToken(rawRefreshToken);
+
+        var session = new UserSession
+        {
+            UserId = user.Id!,
+            RefreshTokenHash = refreshTokenHash,
+            DeviceInfo = !string.IsNullOrWhiteSpace(request.DeviceInfo) ? request.DeviceInfo : (userAgent ?? "Unknown Client"),
+            UserAgent = userAgent ?? "Unknown",
+            IpAddress = ipAddress ?? "Unknown",
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _sessionsCollection.InsertOneAsync(session);
+
+        var (accessToken, expiresInSeconds) = _tokenService.GenerateAccessToken(user, session.Id!);
+
+        await _auditService.LogAsync(user.Id, "LOGIN_SUCCESS", ipAddress, userAgent, new()
+        {
+            ["sessionId"] = session.Id!,
+            ["role"] = user.Role,
+            ["method"] = "password"
+        });
+
+        var responseDto = new AuthResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = rawRefreshToken,
+            TokenType = "Bearer",
+            ExpiresIn = expiresInSeconds,
+            SessionId = session.Id!,
+            User = MapToUserDto(user)
+        };
+
+        return AuthResult<AuthResponseDto>.Ok(responseDto);
+    }
+
+    public static string MaskEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            return "••••••••";
+
+        var parts = email.Split('@');
+        var local = parts[0];
+        var domain = parts[1];
+
+        if (local.Length <= 2)
+        {
+            return $"{local[0]}*@{domain}";
+        }
+        else if (local.Length <= 4)
+        {
+            return $"{local.Substring(0, 1)}••{local.Substring(local.Length - 1)}@{domain}";
+        }
+        else
+        {
+            string start = local.Substring(0, 2);
+            string end = local.Substring(local.Length - 1);
+            int maskedLength = Math.Max(2, Math.Min(6, local.Length - 3));
+            string mask = new string('•', maskedLength);
+            return $"{start}{mask}{end}@{domain}";
+        }
+    }
+
+    public async Task<AuthResult<SendOtpResponseDto>> SendOtpAsync(SendOtpRequestDto request, string? ipAddress, string? userAgent)
+    {
+        string email = request.Email.Trim().ToLowerInvariant();
+
+        // 1. For registration OTP: Check if email is already taken
+        var existingUser = await _usersCollection.Find(u => u.Email == email).FirstOrDefaultAsync();
+        if (existingUser != null)
+        {
+            return AuthResult<SendOtpResponseDto>.Fail("An account with this email address is already registered. Please sign in instead.", 400);
+        }
+
+        // 2. Check for cooldown on recent OTP
         var recentOtp = await _otpCollection
             .Find(o => o.Email == email && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
             .SortByDescending(o => o.CreatedAt)
@@ -52,15 +294,15 @@ public class AuthService : IAuthService
         if (recentOtp != null && recentOtp.IsInCooldown)
         {
             int remainingSeconds = (int)Math.Ceiling((recentOtp.CooldownExpiresAt - DateTime.UtcNow).TotalSeconds);
-            return AuthResult<string>.Fail($"Please wait {Math.Max(1, remainingSeconds)} seconds before requesting a new OTP.", 429);
+            return AuthResult<SendOtpResponseDto>.Fail($"Please wait {Math.Max(1, remainingSeconds)} seconds before requesting a new OTP.", 429);
         }
 
-        // 2. Invalidate older unused OTPs for this email to ensure only 1 active code
+        // 3. Invalidate older unused OTPs for this email to ensure only 1 active code
         await _otpCollection.UpdateManyAsync(
             o => o.Email == email && !o.IsUsed,
             Builders<OtpVerification>.Update.Set(o => o.IsUsed, true));
 
-        // 3. Generate secure OTP and store hash
+        // 4. Generate secure OTP and store hash
         string otpCode = _otpService.GenerateOtpCode();
         string otpHash = _otpService.HashOtp(otpCode);
 
@@ -73,29 +315,138 @@ public class AuthService : IAuthService
             ExpiresAt = DateTime.UtcNow.AddMinutes(5),
             IsUsed = false,
             RequestedRole = request.Role,
+            FullName = request.FullName,
+            Nic = request.Nic,
             CreatedAt = DateTime.UtcNow
         };
 
         await _otpCollection.InsertOneAsync(otpRecord);
 
-        // 4. Send via Email Service
+        // 5. Send via Email Service
         await _emailService.SendOtpEmailAsync(email, otpCode, 5);
 
-        // 5. Audit Log
-        await _auditService.LogAsync(null, "OTP_SENT", ipAddress, userAgent, new()
+        // 6. Audit Log
+        await _auditService.LogAsync(null, "OTP_SENT_REGISTRATION", ipAddress, userAgent, new()
         {
             ["email"] = email,
             ["requestedRole"] = request.Role ?? "default"
         });
 
-        return AuthResult<string>.Ok("Verification passcode sent to your email. Code expires in 5 minutes.");
+        return AuthResult<SendOtpResponseDto>.Ok(new SendOtpResponseDto
+        {
+            Message = "Verification passcode sent to your email. Code expires in 5 minutes.",
+            MaskedEmail = MaskEmail(email),
+            Identifier = email
+        });
+    }
+
+    public async Task<AuthResult<SendOtpResponseDto>> SendLoginOtpAsync(SendLoginOtpRequestDto request, string? ipAddress, string? userAgent)
+    {
+        string identifier = request.Identifier.Trim();
+        string lowerIdentifier = identifier.ToLowerInvariant();
+
+        // 1. Locate user by email OR username (case-insensitive) - MUST BE REGISTERED!
+        var user = await _usersCollection.Find(u =>
+            u.Email.ToLower() == lowerIdentifier ||
+            (u.Username != null && u.Username.ToLower() == lowerIdentifier)
+        ).FirstOrDefaultAsync();
+
+        if (user == null)
+        {
+            await _auditService.LogAsync(null, "LOGIN_OTP_NOT_FOUND", ipAddress, userAgent, new()
+            {
+                ["identifier"] = identifier
+            });
+            return AuthResult<SendOtpResponseDto>.Fail("No registered account found with that email or username. Please check your credentials or register a new account.", 404);
+        }
+
+        if (!user.IsActive)
+        {
+            await _auditService.LogAsync(user.Id, "LOGIN_OTP_DEACTIVATED", ipAddress, userAgent);
+            return AuthResult<SendOtpResponseDto>.Fail("This account has been deactivated. Please contact support.", 403);
+        }
+
+        string email = user.Email;
+
+        // 2. Check for cooldown
+        var recentOtp = await _otpCollection
+            .Find(o => o.Email == email && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
+            .SortByDescending(o => o.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (recentOtp != null && recentOtp.IsInCooldown)
+        {
+            int remainingSeconds = (int)Math.Ceiling((recentOtp.CooldownExpiresAt - DateTime.UtcNow).TotalSeconds);
+            return AuthResult<SendOtpResponseDto>.Fail($"Please wait {Math.Max(1, remainingSeconds)} seconds before requesting a new OTP.", 429);
+        }
+
+        // 3. Invalidate older unused OTPs
+        await _otpCollection.UpdateManyAsync(
+            o => o.Email == email && !o.IsUsed,
+            Builders<OtpVerification>.Update.Set(o => o.IsUsed, true));
+
+        // 4. Generate secure OTP
+        string otpCode = _otpService.GenerateOtpCode();
+        string otpHash = _otpService.HashOtp(otpCode);
+
+        var otpRecord = new OtpVerification
+        {
+            Email = email,
+            OtpHash = otpHash,
+            AttemptsCount = 0,
+            CooldownExpiresAt = DateTime.UtcNow.AddSeconds(60),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            IsUsed = false,
+            RequestedRole = user.Role,
+            FullName = user.FullName,
+            Nic = user.Nic,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _otpCollection.InsertOneAsync(otpRecord);
+
+        // 5. Send via Email Service
+        await _emailService.SendOtpEmailAsync(email, otpCode, 5);
+
+        // 6. Audit Log
+        await _auditService.LogAsync(user.Id, "OTP_SENT_LOGIN", ipAddress, userAgent, new()
+        {
+            ["identifier"] = identifier,
+            ["role"] = user.Role
+        });
+
+        string maskedEmail = MaskEmail(email);
+
+        return AuthResult<SendOtpResponseDto>.Ok(new SendOtpResponseDto
+        {
+            Message = $"Verification passcode dispatched to your registered email ({maskedEmail}).",
+            MaskedEmail = maskedEmail,
+            Identifier = user.Username ?? user.Email
+        });
     }
 
     public async Task<AuthResult<AuthResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto request, string? ipAddress, string? userAgent)
     {
-        string email = request.Email.Trim().ToLowerInvariant();
+        string rawIdentifier = !string.IsNullOrWhiteSpace(request.Identifier)
+            ? request.Identifier.Trim()
+            : (!string.IsNullOrWhiteSpace(request.Email) ? request.Email.Trim() : string.Empty);
 
-        // 1. Fetch latest unused OTP record
+        if (string.IsNullOrWhiteSpace(rawIdentifier))
+        {
+            return AuthResult<AuthResponseDto>.Fail("Email or username is required.", 400);
+        }
+
+        string lowerIdentifier = rawIdentifier.ToLowerInvariant();
+
+        // 1. Look for registered user by email or username
+        var user = await _usersCollection.Find(u =>
+            u.Email.ToLower() == lowerIdentifier ||
+            (u.Username != null && u.Username.ToLower() == lowerIdentifier)
+        ).FirstOrDefaultAsync();
+
+        string email = user != null ? user.Email : lowerIdentifier;
+
+        // 2. Fetch latest unused OTP record for this email
         var otpRecord = await _otpCollection
             .Find(o => o.Email == email && !o.IsUsed)
             .SortByDescending(o => o.CreatedAt)
@@ -118,7 +469,7 @@ public class AuthService : IAuthService
             return AuthResult<AuthResponseDto>.Fail("Maximum verification attempts exceeded. Please request a new code.", 400);
         }
 
-        // 2. Constant-time hash verification
+        // 3. Constant-time hash verification
         bool isOtpValid = _otpService.VerifyOtp(request.Otp, otpRecord.OtpHash);
 
         if (!isOtpValid)
@@ -146,14 +497,12 @@ public class AuthService : IAuthService
                 400);
         }
 
-        // 3. Mark OTP as used
+        // 4. Mark OTP as used
         await _otpCollection.UpdateOneAsync(
             o => o.Id == otpRecord.Id,
             Builders<OtpVerification>.Update.Set(o => o.IsUsed, true));
 
-        // 4. Find or create AuthUser
-        var user = await _usersCollection.Find(u => u.Email == email).FirstOrDefaultAsync();
-
+        // 5. Must be registered user or creating during registration
         if (user == null)
         {
             string assignedRole = !string.IsNullOrWhiteSpace(otpRecord.RequestedRole) && AuthRoles.IsValidRole(otpRecord.RequestedRole)
@@ -162,11 +511,20 @@ public class AuthService : IAuthService
 
             var permissions = AuthPermissions.GetDefaultPermissionsForRole(assignedRole);
 
+            string approvalStatus = string.Equals(assignedRole, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)
+                ? "PendingApproval"
+                : "Approved";
+
             user = new AuthUser
             {
                 Email = email,
+                Username = !string.IsNullOrWhiteSpace(request.Username) ? request.Username.Trim() : null,
+                PasswordHash = !string.IsNullOrWhiteSpace(request.Password) ? BCrypt.Net.BCrypt.HashPassword(request.Password) : null,
                 Role = assignedRole,
                 Permissions = permissions,
+                ApprovalStatus = approvalStatus,
+                FullName = !string.IsNullOrWhiteSpace(request.FullName) ? request.FullName : otpRecord.FullName,
+                Nic = !string.IsNullOrWhiteSpace(request.Nic) ? request.Nic : otpRecord.Nic,
                 IsActive = true,
                 IsVerified = true,
                 CreatedAt = DateTime.UtcNow,
@@ -174,7 +532,11 @@ public class AuthService : IAuthService
             };
 
             await _usersCollection.InsertOneAsync(user);
-            await _auditService.LogAsync(user.Id, "USER_REGISTERED", ipAddress, userAgent, new() { ["role"] = user.Role });
+            await _auditService.LogAsync(user.Id, "USER_REGISTERED", ipAddress, userAgent, new()
+            {
+                ["role"] = user.Role,
+                ["approvalStatus"] = user.ApprovalStatus
+            });
         }
         else
         {
@@ -184,15 +546,27 @@ public class AuthService : IAuthService
                 return AuthResult<AuthResponseDto>.Fail("This account has been deactivated. Please contact support.", 403);
             }
 
-            // Update verification status and timestamp
+            // Update verification status and timestamp, plus username/password if missing
+            var updateDefs = new List<UpdateDefinition<AuthUser>>
+            {
+                Builders<AuthUser>.Update.Set(u => u.IsVerified, true),
+                Builders<AuthUser>.Update.Set(u => u.UpdatedAt, DateTime.UtcNow)
+            };
+            if (!string.IsNullOrWhiteSpace(request.Password) && string.IsNullOrEmpty(user.PasswordHash))
+            {
+                updateDefs.Add(Builders<AuthUser>.Update.Set(u => u.PasswordHash, BCrypt.Net.BCrypt.HashPassword(request.Password)));
+            }
+            if (!string.IsNullOrWhiteSpace(request.Username) && string.IsNullOrEmpty(user.Username))
+            {
+                updateDefs.Add(Builders<AuthUser>.Update.Set(u => u.Username, request.Username.Trim()));
+            }
+
             await _usersCollection.UpdateOneAsync(
                 u => u.Id == user.Id,
-                Builders<AuthUser>.Update
-                    .Set(u => u.IsVerified, true)
-                    .Set(u => u.UpdatedAt, DateTime.UtcNow));
+                Builders<AuthUser>.Update.Combine(updateDefs));
         }
 
-        // 5. Create Session
+        // 6. Create Session
         string rawRefreshToken = _tokenService.GenerateRefreshToken();
         string refreshTokenHash = _tokenService.HashToken(rawRefreshToken);
 
@@ -209,13 +583,13 @@ public class AuthService : IAuthService
 
         await _sessionsCollection.InsertOneAsync(session);
 
-        // 6. Generate Short-Lived Access Token
         var (accessToken, expiresInSeconds) = _tokenService.GenerateAccessToken(user, session.Id!);
 
-        await _auditService.LogAsync(user.Id, "LOGIN_SUCCESS", ipAddress, userAgent, new()
+        await _auditService.LogAsync(user.Id, "LOGIN_SUCCESS_OTP", ipAddress, userAgent, new()
         {
             ["sessionId"] = session.Id!,
-            ["role"] = user.Role
+            ["role"] = user.Role,
+            ["method"] = "otp"
         });
 
         var responseDto = new AuthResponseDto
@@ -416,10 +790,16 @@ public class AuthService : IAuthService
     {
         Id = user.Id ?? string.Empty,
         Email = user.Email,
+        Username = user.Username,
         Role = user.Role,
         Permissions = user.Permissions ?? new List<string>(),
         IsActive = user.IsActive,
         IsVerified = user.IsVerified,
+        ApprovalStatus = user.ApprovalStatus ?? "Approved",
+        FullName = user.FullName,
+        Nic = user.Nic,
+        ApprovedAt = user.ApprovedAt,
+        RejectionReason = user.RejectionReason,
         CreatedAt = user.CreatedAt
     };
 }

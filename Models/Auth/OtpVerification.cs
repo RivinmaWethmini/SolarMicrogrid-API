@@ -33,6 +33,12 @@ public class OtpVerification
     [BsonElement("requestedRole")]
     public string? RequestedRole { get; set; }
 
+    [BsonElement("fullName")]
+    public string? FullName { get; set; }
+
+    [BsonElement("nic")]
+    public string? Nic { get; set; }
+
     [BsonElement("createdAt")]
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

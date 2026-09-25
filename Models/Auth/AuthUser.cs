@@ -13,6 +13,12 @@ public class AuthUser
     [BsonElement("email")]
     public string Email { get; set; } = string.Empty;
 
+    [BsonElement("username")]
+    public string? Username { get; set; }
+
+    [BsonElement("passwordHash")]
+    public string? PasswordHash { get; set; }
+
     [BsonElement("role")]
     public string Role { get; set; } = AuthRoles.Consumer;
 
@@ -24,6 +30,25 @@ public class AuthUser
 
     [BsonElement("isVerified")]
     public bool IsVerified { get; set; } = false;
+
+    [BsonElement("approvalStatus")]
+    public string ApprovalStatus { get; set; } = "Approved";
+
+    [BsonElement("fullName")]
+    public string? FullName { get; set; }
+
+    [BsonElement("nic")]
+    public string? Nic { get; set; }
+
+    [BsonElement("approvedAt")]
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public DateTime? ApprovedAt { get; set; }
+
+    [BsonElement("approvedBy")]
+    public string? ApprovedBy { get; set; }
+
+    [BsonElement("rejectionReason")]
+    public string? RejectionReason { get; set; }
 
     [BsonElement("createdAt")]
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
