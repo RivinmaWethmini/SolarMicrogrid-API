@@ -24,4 +24,6 @@ public interface IReservationService
     Task<bool> CancelAsync(string id);
     Task<bool> UpdateAsync(string id, Reservation updatedReservation);
     Task<bool> DeleteAsync(string id);
+    Task<QrVerifyResult> VerifyAndDispatchAsync(QrVerifyRequest request); // QR scan verification
 }
+

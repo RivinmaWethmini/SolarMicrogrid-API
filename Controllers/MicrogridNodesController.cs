@@ -299,8 +299,7 @@ public class MicrogridNodesController : ControllerBase
         {
             return BadRequest(new
             {
-                message =
-                    "Latitude must be between -90 and 90."
+                message = "Latitude must be between -90 and 90."
             });
         }
 
@@ -308,8 +307,7 @@ public class MicrogridNodesController : ControllerBase
         {
             return BadRequest(new
             {
-                message =
-                    "Longitude must be between -180 and 180."
+                message = "Longitude must be between -180 and 180."
             });
         }
 
@@ -321,8 +319,7 @@ public class MicrogridNodesController : ControllerBase
         {
             return BadRequest(new
             {
-                message =
-                    "Capacity must be greater than zero."
+                message = "Capacity must be greater than zero."
             });
         }
 
@@ -332,8 +329,7 @@ public class MicrogridNodesController : ControllerBase
         {
             return BadRequest(new
             {
-                message =
-                    "Battery slots must be greater than zero."
+                message = "Battery slots must be greater than zero."
             });
         }
 
