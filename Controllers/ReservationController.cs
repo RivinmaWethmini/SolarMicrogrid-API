@@ -17,7 +17,6 @@ namespace SolarAPI.Controllers;
 
 [ApiController]
 [Route("api/reservations")] // FIX: Consistent lowercase route (was api/[controller] = api/Reservation)
-[Authorize]
 public class ReservationController : ControllerBase
 {
     private readonly IReservationService _reservationService;
