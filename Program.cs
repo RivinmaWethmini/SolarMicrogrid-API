@@ -288,6 +288,16 @@ using (var scope = app.Services.CreateScope())
             Console.WriteLine("[INFO] Default Prosumers initialized.");
         }
 
+        // Ensure all prosumer records have valid NICs populated
+        var missingNicList = proCol.Find(p => string.IsNullOrEmpty(p.NIC)).ToList();
+        int pIndex = 1;
+        foreach (var mp in missingNicList)
+        {
+            var assignedNic = pIndex == 1 ? "200224700740" : (pIndex == 2 ? "200012345678" : $"19950000000{pIndex}");
+            proCol.UpdateOne(p => p.Id == mp.Id, Builders<Prosumer>.Update.Set(p => p.NIC, assignedNic));
+            pIndex++;
+        }
+
         if (resCol.CountDocuments(_ => true) == 0)
         {
             var resService = scope.ServiceProvider.GetRequiredService<IReservationService>();

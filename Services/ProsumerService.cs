@@ -35,9 +35,16 @@ public class ProsumerService : IProsumerService
     {
         if (string.IsNullOrWhiteSpace(identifier)) return null;
         var trimmed = identifier.Trim();
-        return await _prosumers
-            .Find(p => p.NIC == trimmed || p.Id == trimmed || p.UserId == trimmed)
-            .FirstOrDefaultAsync();
+
+        var builder = Builders<Prosumer>.Filter;
+        var filter = builder.Eq(p => p.NIC, trimmed);
+
+        if (MongoDB.Bson.ObjectId.TryParse(trimmed, out _))
+        {
+            filter |= builder.Eq(p => p.Id, trimmed) | builder.Eq(p => p.UserId, trimmed);
+        }
+
+        return await _prosumers.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<Prosumer> CreateAsync(Prosumer prosumer)
