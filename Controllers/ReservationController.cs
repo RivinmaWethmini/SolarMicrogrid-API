@@ -211,4 +211,77 @@ public class ReservationController : ControllerBase
 
         return NoContent();
     }
+
+    // ─── VERIFY QR CODE (Grid Operator / Station Scanner) ────────────────────
+    // POST: api/qr/verify or api/reservations/qr/verify
+    [HttpPost("/api/qr/verify")]
+    [HttpPost("qr/verify")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyQr([FromBody] VerifyQrRequest request)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.ScannedPayload))
+        {
+            return Ok(new { success = false, message = "Scanned payload is missing or empty." });
+        }
+
+        string targetReservationId = request.ScannedPayload.Trim();
+
+        // If JSON payload was passed, parse reservationId out of it
+        if (targetReservationId.StartsWith("{") && targetReservationId.EndsWith("}"))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(targetReservationId);
+                if (doc.RootElement.TryGetProperty("reservationId", out var resIdProp))
+                {
+                    targetReservationId = resIdProp.GetString() ?? targetReservationId;
+                }
+            }
+            catch
+            {
+                // Fall back to targetReservationId as raw string
+            }
+        }
+
+        var reservation = await _reservationService.GetByIdAsync(targetReservationId);
+        if (reservation == null)
+        {
+            return Ok(new
+            {
+                success = false,
+                message = $"Reservation record '{targetReservationId}' was not found in the grid database."
+            });
+        }
+
+        if (!string.Equals(reservation.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            return Ok(new
+            {
+                success = false,
+                message = $"Reservation status is '{reservation.Status}'. Only 'Approved' reservations are valid for dispatch.",
+                prosumerId = reservation.ProsumerId,
+                nodeId = reservation.NodeId,
+                reservedEnergyKwh = reservation.ReservedEnergyKwh,
+                reservationDate = reservation.ReservationDate.ToString("yyyy-MM-dd HH:mm")
+            });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            message = "Reservation verified successfully. Energy dispatch authorized.",
+            reservationId = reservation.Id,
+            prosumerId = reservation.ProsumerId,
+            nodeId = reservation.NodeId,
+            reservedEnergyKwh = reservation.ReservedEnergyKwh,
+            reservationDate = reservation.ReservationDate.ToString("yyyy-MM-dd HH:mm")
+        });
+    }
 }
+
+public class VerifyQrRequest
+{
+    public string? ScannedPayload { get; set; }
+    public string? OperatorId { get; set; }
+}
+
