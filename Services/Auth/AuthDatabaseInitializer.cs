@@ -1,3 +1,10 @@
+// ============================================================================
+// File: AuthDatabaseInitializer.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Database seeder ensuring required collections, unique indices, and default administrative accounts exist on startup.
+// ============================================================================
+
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using SolarAPI.Models.Auth;
@@ -17,6 +24,7 @@ public class AuthDatabaseInitializer : IAuthDatabaseInitializer
 
     public async Task InitializeAsync()
     {
+        // Inline comment: Begin execution of InitializeAsync method
         try
         {
             // 1. AuthUsers collection indexes: Unique Email
@@ -53,6 +61,73 @@ public class AuthDatabaseInitializer : IAuthDatabaseInitializer
 
             var auditTimestampIndexKeys = Builders<AuthAuditLog>.IndexKeys.Descending(a => a.Timestamp);
             await auditCollection.Indexes.CreateOneAsync(new CreateIndexModel<AuthAuditLog>(auditTimestampIndexKeys, new CreateIndexOptions { Name = "idx_audit_timestamp" }));
+
+            // 5. Seed default users if AuthUsers collection is empty
+            if (await usersCollection.CountDocumentsAsync(_ => true) == 0)
+            {
+                var seedUsers = new List<AuthUser>
+                {
+                    new()
+                    {
+                        Email = "admin@solar.com",
+                        Username = "admin",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@12345"),
+                        FullName = "Backoffice Administrator",
+                        Role = AuthRoles.Backoffice,
+                        Nic = "198000000001",
+                        IsActive = true,
+                        IsVerified = true,
+                        ApprovalStatus = "Approved",
+                        Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.Backoffice),
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new()
+                    {
+                        Email = "operator@solar.com",
+                        Username = "operator",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Operator@12345"),
+                        FullName = "Grid Site Operator",
+                        Role = AuthRoles.GridOperator,
+                        Nic = "198500000002",
+                        IsActive = true,
+                        IsVerified = true,
+                        ApprovalStatus = "Approved",
+                        Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.GridOperator),
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new()
+                    {
+                        Email = "prosumer@solar.com",
+                        Username = "prosumer",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Prosumer@12345"),
+                        FullName = "SunPower Station A",
+                        Role = AuthRoles.Prosumer,
+                        Nic = "200224700740",
+                        IsActive = true,
+                        IsVerified = true,
+                        ApprovalStatus = "Approved",
+                        Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.Prosumer),
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new()
+                    {
+                        Email = "consumer@solar.com",
+                        Username = "consumer",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Consumer@12345"),
+                        FullName = "CleanEnergy Consumer",
+                        Role = AuthRoles.Consumer,
+                        Nic = "199512345678",
+                        IsActive = true,
+                        IsVerified = true,
+                        ApprovalStatus = "Approved",
+                        Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.Consumer),
+                        CreatedAt = DateTime.UtcNow
+                    }
+                };
+
+                await usersCollection.InsertManyAsync(seedUsers);
+                _logger.LogInformation("Default authentication accounts seeded: admin@solar.com, operator@solar.com, prosumer@solar.com, consumer@solar.com");
+            }
 
             _logger.LogInformation("MongoDB Auth collections and security indexes successfully verified/created.");
         }

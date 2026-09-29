@@ -1,3 +1,10 @@
+// ============================================================================
+// File: AuthPermissions.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Constants and definitions for fine-grained application authorization permissions.
+// ============================================================================
+
 namespace SolarAPI.Models.Auth;
 
 public static class AuthPermissions
@@ -25,7 +32,7 @@ public static class AuthPermissions
     {
         return role switch
         {
-            AuthRoles.Admin => new List<string>
+            AuthRoles.Admin or AuthRoles.Backoffice => new List<string>
             {
                 MicrogridRead,
                 MicrogridManage,
@@ -37,6 +44,17 @@ public static class AuthPermissions
                 ReservationManage,
                 UserManage,
                 AuditRead,
+                SessionRevoke
+            },
+            AuthRoles.GridOperator => new List<string>
+            {
+                MicrogridRead,
+                MicrogridManage,
+                ProsumerRead,
+                ReservationRead,
+                ReservationCreate,
+                ReservationCancel,
+                ReservationManage,
                 SessionRevoke
             },
             AuthRoles.Prosumer => new List<string>

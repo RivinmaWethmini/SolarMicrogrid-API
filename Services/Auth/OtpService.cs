@@ -1,3 +1,10 @@
+// ============================================================================
+// File: OtpService.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Service implementing secure 6-digit cryptographic OTP generation, attempt rate-limiting, and validation.
+// ============================================================================
+
 using System.Security.Cryptography;
 using System.Text;
 
@@ -14,6 +21,7 @@ public class OtpService : IOtpService
 
     public string HashOtp(string otpCode)
     {
+        // Inline comment: Begin execution of HashOtp method
         ArgumentException.ThrowIfNullOrWhiteSpace(otpCode);
         byte[] bytes = Encoding.UTF8.GetBytes(otpCode.Trim());
         byte[] hash = SHA256.HashData(bytes);
@@ -22,6 +30,7 @@ public class OtpService : IOtpService
 
     public bool VerifyOtp(string inputOtp, string storedHash)
     {
+        // Inline comment: Begin execution of VerifyOtp method
         if (string.IsNullOrWhiteSpace(inputOtp) || string.IsNullOrWhiteSpace(storedHash))
         {
             return false;

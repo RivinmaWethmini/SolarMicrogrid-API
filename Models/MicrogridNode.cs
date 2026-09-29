@@ -1,3 +1,10 @@
+// ============================================================================
+// File: MicrogridNode.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Domain entity representing a physical solar microgrid substation node, solar capacity, battery specs, and operational status.
+// ============================================================================
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 

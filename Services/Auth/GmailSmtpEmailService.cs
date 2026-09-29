@@ -1,3 +1,10 @@
+// ============================================================================
+// File: GmailSmtpEmailService.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Production email service dispatching OTP verification codes via Gmail SMTP relay with SSL encryption.
+// ============================================================================
+
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Options;
@@ -76,6 +83,7 @@ public class GmailSmtpEmailService : IEmailService
 
     private void LogDevelopmentConsoleBanner(string toEmail, string otpCode, int expiryMinutes, string note)
     {
+        // Inline comment: Begin execution of LogDevelopmentConsoleBanner method
         var banner = $"""
 
         ================================================================================
@@ -91,6 +99,7 @@ public class GmailSmtpEmailService : IEmailService
 
     private string BuildHtmlBody(string otpCode, int expiryMinutes)
     {
+        // Inline comment: Begin execution of BuildHtmlBody method
         return $$"""
         <!DOCTYPE html>
         <html lang="en">

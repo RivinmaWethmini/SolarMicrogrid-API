@@ -1,3 +1,10 @@
+// ============================================================================
+// File: TokenService.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Service implementing JWT token signing, HMAC-SHA256 signature verification, and claims generation.
+// ============================================================================
+
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -75,6 +82,7 @@ public class TokenService : ITokenService
 
     public string HashToken(string token)
     {
+        // Inline comment: Begin execution of HashToken method
         ArgumentException.ThrowIfNullOrWhiteSpace(token);
         byte[] bytes = Encoding.UTF8.GetBytes(token.Trim());
         byte[] hash = SHA256.HashData(bytes);
@@ -83,6 +91,7 @@ public class TokenService : ITokenService
 
     public bool VerifyTokenHash(string token, string storedHash)
     {
+        // Inline comment: Begin execution of VerifyTokenHash method
         if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(storedHash))
         {
             return false;

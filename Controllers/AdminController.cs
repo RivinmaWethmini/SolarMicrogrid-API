@@ -1,3 +1,10 @@
+// ============================================================================
+// File: AdminController.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: RESTful Web API controller for administrative governance, prosumer KYC approvals, role management, and audit inspection.
+// ============================================================================
+
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +53,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetProsumers([FromQuery] string? status = null)
     {
+        // Inline comment: Begin execution of GetProsumers method
         var filterBuilder = Builders<AuthUser>.Filter;
         var filter = filterBuilder.Eq(u => u.Role, AuthRoles.Prosumer);
 
@@ -69,6 +77,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetPendingProsumers()
     {
+        // Inline comment: Begin execution of GetPendingProsumers method
         var filter = Builders<AuthUser>.Filter.And(
             Builders<AuthUser>.Filter.Eq(u => u.Role, AuthRoles.Prosumer),
             Builders<AuthUser>.Filter.Eq(u => u.ApprovalStatus, "PendingApproval")
@@ -91,6 +100,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ApproveProsumer(string id)
     {
+        // Inline comment: Begin execution of ApproveProsumer method
         var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -163,6 +173,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RejectProsumer(string id, [FromBody] RejectionRequestDto? body = null)
     {
+        // Inline comment: Begin execution of RejectProsumer method
         var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -213,6 +224,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAdminStats()
     {
+        // Inline comment: Begin execution of GetAdminStats method
         var allUsers = await _usersCollection.Find(_ => true).ToListAsync();
         var allReservations = await _reservationsCollection.Find(_ => true).ToListAsync();
         var allNodes = await _nodesCollection.Find(_ => true).ToListAsync();

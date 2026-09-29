@@ -261,6 +261,7 @@ using (var scope = app.Services.CreateScope())
                 new Prosumer
                 {
                     UserId = MongoDB.Bson.ObjectId.GenerateNewId().ToString(),
+                    NIC = "200224700740",
                     Name = "SunPower Station A (Colombo North)",
                     SolarCapacityKw = 25.0,
                     BatteryCapacityKwh = 50.0,
@@ -273,6 +274,7 @@ using (var scope = app.Services.CreateScope())
                 new Prosumer
                 {
                     UserId = MongoDB.Bson.ObjectId.GenerateNewId().ToString(),
+                    NIC = "200012345678",
                     Name = "GreenWatt Microgrid (Kandy Hub)",
                     SolarCapacityKw = 40.0,
                     BatteryCapacityKwh = 80.0,

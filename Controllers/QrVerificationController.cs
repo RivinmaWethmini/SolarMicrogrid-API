@@ -31,6 +31,7 @@ public class QrVerificationController : ControllerBase
     [HttpPost("verify")]
     public async Task<IActionResult> Verify([FromBody] QrVerifyRequest request)
     {
+        // Inline comment: Begin execution of Verify method
         if (request == null || string.IsNullOrWhiteSpace(request.ScannedPayload))
         {
             return BadRequest(new QrVerifyResult

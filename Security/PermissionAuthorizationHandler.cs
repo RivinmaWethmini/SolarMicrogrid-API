@@ -1,3 +1,10 @@
+// ============================================================================
+// File: PermissionAuthorizationHandler.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Custom ASP.NET Core authorization handler evaluating fine-grained permission claims on authenticated identities.
+// ============================================================================
+
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using SolarAPI.Models.Auth;

@@ -1,3 +1,10 @@
+// ============================================================================
+// File: PermissionPolicyProvider.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Dynamic policy provider mapping permission requirements to ASP.NET Core authorization policies.
+// ============================================================================
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 

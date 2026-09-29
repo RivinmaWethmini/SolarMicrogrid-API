@@ -1,3 +1,10 @@
+// ============================================================================
+// File: UserSession.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Domain entity managing active refresh token sessions, client fingerprints, and revocation states.
+// ============================================================================
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
