@@ -247,22 +247,29 @@ public class AdminController : ControllerBase
         return Ok(stats);
     }
 
-    private static AuthUserDto MapToDto(AuthUser u) => new()
+    private static AuthUserDto MapToDto(AuthUser u)
     {
-        Id = u.Id ?? string.Empty,
-        Email = u.Email,
-        Role = u.Role,
-        Permissions = u.Permissions ?? new List<string>(),
-        IsActive = u.IsActive,
-        IsVerified = u.IsVerified,
-        ApprovalStatus = u.ApprovalStatus ?? "Approved",
-        FullName = u.FullName,
-        Nic = u.Nic,
-        ApprovedAt = u.ApprovedAt,
-        RejectionReason = u.RejectionReason,
-        CreatedAt = u.CreatedAt
-    };
+        // Inline comment: Begin execution of MapToDto helper method to map database user entity to transfer object
+        return new()
+        {
+            Id = u.Id ?? string.Empty,
+            Email = u.Email,
+            Role = u.Role,
+            Permissions = u.Permissions ?? new List<string>(),
+            IsActive = u.IsActive,
+            IsVerified = u.IsVerified,
+            ApprovalStatus = u.ApprovalStatus ?? "Approved",
+            FullName = u.FullName,
+            Nic = u.Nic,
+            ApprovedAt = u.ApprovedAt,
+            RejectionReason = u.RejectionReason,
+            CreatedAt = u.CreatedAt
+        };
+    }
 
-    private string GetClientIp() =>
-        HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+    private string GetClientIp()
+    {
+        // Inline comment: Begin execution of GetClientIp helper method to extract remote client IP
+        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+    }
 }

@@ -30,6 +30,7 @@ public static class AuthPermissions
 
     public static List<string> GetDefaultPermissionsForRole(string role)
     {
+        // Inline comment: Begin execution of GetDefaultPermissionsForRole method to map user role to authorization claims
         return role switch
         {
             AuthRoles.Admin or AuthRoles.Backoffice => new List<string>

@@ -33,6 +33,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<Prosumer?> GetByIdAsync(string identifier)
     {
+        // Inline comment: Begin execution of GetByIdAsync method to query prosumer by NIC or MongoDB ID
         if (string.IsNullOrWhiteSpace(identifier)) return null;
         var trimmed = identifier.Trim();
 
@@ -49,6 +50,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<Prosumer> CreateAsync(Prosumer prosumer)
     {
+        // Inline comment: Begin execution of CreateAsync method to persist a new prosumer profile
         // Business logic: enforce clean creation state
         prosumer.Id = null; // Let MongoDB generate the ObjectId
         prosumer.CreatedAt = DateTime.UtcNow;
@@ -65,6 +67,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> UpdateAsync(string identifier, Prosumer updatedProsumer)
     {
+        // Inline comment: Begin execution of UpdateAsync method to update prosumer properties
         // Business logic: verify existence before update
         var existing = await GetByIdAsync(identifier);
         if (existing == null)
@@ -85,6 +88,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> DeactivateAsync(string identifier)
     {
+        // Inline comment: Begin execution of DeactivateAsync method to set prosumer availability to false
         var existing = await GetByIdAsync(identifier);
         if (existing == null) return false;
 
@@ -99,6 +103,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> ReactivateAsync(string identifier)
     {
+        // Inline comment: Begin execution of ReactivateAsync method to reactivate prosumer availability
         var existing = await GetByIdAsync(identifier);
         if (existing == null) return false;
 
@@ -111,6 +116,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> DeleteAsync(string identifier)
     {
+        // Inline comment: Begin execution of DeleteAsync method to remove prosumer document from database
         var existing = await GetByIdAsync(identifier);
         if (existing == null) return false;
 

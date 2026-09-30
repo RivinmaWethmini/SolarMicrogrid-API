@@ -26,6 +26,7 @@ public static class AuthRoles
 
     public static bool IsValidRole(string role)
     {
+        // Inline comment: Begin execution of IsValidRole method to validate role against allowed system roles
         return AllRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
     }
 }

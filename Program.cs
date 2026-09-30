@@ -1,6 +1,8 @@
 // ============================================================================
 // File: Program.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Project: SolarAPI - Smart Solar Microgrid Trading & Reservation System
+// Module: SE4040 - Enterprise Application Development
+// Description: Main application entry point, dependency injection configuration, middleware pipeline, and MongoDB initialization.
 // ============================================================================
 
 using System.Text;

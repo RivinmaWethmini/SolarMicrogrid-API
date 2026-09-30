@@ -16,11 +16,13 @@ public class PermissionPolicyProvider : DefaultAuthorizationPolicyProvider
 
     public PermissionPolicyProvider(IOptions<AuthorizationOptions> options) : base(options)
     {
+        // Inline comment: Begin execution of PermissionPolicyProvider constructor
         _options = options.Value;
     }
 
     public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
     {
+        // Inline comment: Begin execution of GetPolicyAsync method to dynamically generate permission requirement policy
         var existingPolicy = await base.GetPolicyAsync(policyName);
         if (existingPolicy != null)
         {

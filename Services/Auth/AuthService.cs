@@ -811,20 +811,24 @@ public class AuthService : IAuthService
         return AuthResult<bool>.Ok(true);
     }
 
-    private static AuthUserDto MapToUserDto(AuthUser user) => new()
+    private static AuthUserDto MapToUserDto(AuthUser user)
     {
-        Id = user.Id ?? string.Empty,
-        Email = user.Email,
-        Username = user.Username,
-        Role = user.Role,
-        Permissions = user.Permissions ?? new List<string>(),
-        IsActive = user.IsActive,
-        IsVerified = user.IsVerified,
-        ApprovalStatus = user.ApprovalStatus ?? "Approved",
-        FullName = user.FullName,
-        Nic = user.Nic,
-        ApprovedAt = user.ApprovedAt,
-        RejectionReason = user.RejectionReason,
-        CreatedAt = user.CreatedAt
-    };
+        // Inline comment: Begin execution of MapToUserDto helper method to map database user entity to transfer object
+        return new()
+        {
+            Id = user.Id ?? string.Empty,
+            Email = user.Email,
+            Username = user.Username,
+            Role = user.Role,
+            Permissions = user.Permissions ?? new List<string>(),
+            IsActive = user.IsActive,
+            IsVerified = user.IsVerified,
+            ApprovalStatus = user.ApprovalStatus ?? "Approved",
+            FullName = user.FullName,
+            Nic = user.Nic,
+            ApprovedAt = user.ApprovedAt,
+            RejectionReason = user.RejectionReason,
+            CreatedAt = user.CreatedAt
+        };
+    }
 }

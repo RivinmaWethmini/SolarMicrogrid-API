@@ -24,6 +24,7 @@ public class FlexibleBsonStringSerializer : SerializerBase<string>
 {
     public override string Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
     {
+        // Inline comment: Begin execution of Deserialize method to convert BSON types to formatted strings safely
         var bsonType = context.Reader.CurrentBsonType;
         switch (bsonType)
         {
@@ -50,6 +51,7 @@ public class FlexibleBsonStringSerializer : SerializerBase<string>
 
     public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, string value)
     {
+        // Inline comment: Begin execution of Serialize method to write string value or empty string for nulls
         if (value == null)
         {
             context.Writer.WriteString(string.Empty);

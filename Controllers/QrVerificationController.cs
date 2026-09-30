@@ -1,7 +1,8 @@
 // ============================================================================
 // File: QrVerificationController.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Author: Member 4 (Energy Reservation & QR Dispatch)
+// Project: SolarAPI - Smart Solar Microgrid Trading & Reservation System
+// Module: SE4040 - Enterprise Application Development
+// Description: RESTful Web API controller for digital QR dispatch verification passes, energy collection authentication, and token validation.
 // Route: POST /api/qr/verify
 // ============================================================================
 
