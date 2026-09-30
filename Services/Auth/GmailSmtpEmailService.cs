@@ -213,7 +213,7 @@ public class GmailSmtpEmailService : IEmailService
         <body>
           <div class="wrapper">
             <div class="card">
-              <span class="brand-badge">⚡ Solar Microgrid</span>
+              <span class="brand-badge">Solarrays Microgrid</span>
               <h1 class="title">Security Verification</h1>
               <p class="subtitle">Please use the 6-digit one-time passcode below to verify your email address and authorize your microgrid session.</p>
 

@@ -23,7 +23,7 @@ public class RejectionRequestDto
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = AuthRoles.Admin)]
+[Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
 public class AdminController : ControllerBase
 {
     private readonly IMongoCollection<AuthUser> _usersCollection;

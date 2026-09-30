@@ -271,7 +271,7 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid user identity." });
         }
 
-        var isAdmin = User.IsInRole(AuthRoles.Admin);
+        var isAdmin = User.IsInRole(AuthRoles.Admin) || User.IsInRole(AuthRoles.Backoffice);
         var ip = GetClientIpAddress();
         var userAgent = GetUserAgent();
 
@@ -321,7 +321,7 @@ public class AuthController : ControllerBase
     [HttpGet("admin/test")]
     [HttpGet("admin/dashboard")]
     [HttpGet("~/api/admin/dashboard")]
-    [Authorize(Roles = AuthRoles.Admin)]
+    [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

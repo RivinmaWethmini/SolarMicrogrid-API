@@ -23,7 +23,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         }
 
         // Admin role has superuser privilege across all permissions
-        if (context.User.IsInRole(AuthRoles.Admin))
+        if (context.User.IsInRole(AuthRoles.Admin) || context.User.IsInRole(AuthRoles.Backoffice))
         {
             context.Succeed(requirement);
             return Task.CompletedTask;

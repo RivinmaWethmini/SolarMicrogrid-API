@@ -67,16 +67,44 @@ public class AuthDatabaseInitializer : IAuthDatabaseInitializer
             {
                 new()
                 {
-                    Email = "admin@solar.com",
-                    Username = "admin",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@12345"),
-                    FullName = "Backoffice Administrator",
-                    Role = AuthRoles.Backoffice,
+                    Email = "dissanayakerivinma@gmail.com",
+                    Username = "Rivinma",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("rivinma12"),
+                    FullName = "Rivinma Dissanayake (Admin)",
+                    Role = AuthRoles.Admin,
+                    Nic = "199912345678",
+                    IsActive = true,
+                    IsVerified = true,
+                    ApprovalStatus = "Approved",
+                    Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.Admin),
+                    CreatedAt = DateTime.UtcNow
+                },
+                new()
+                {
+                    Email = "sanjithar2315@gmail.com",
+                    Username = "sanjitha",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("sanjitha123"),
+                    FullName = "Sanjitha (Backoffice Admin)",
+                    Role = AuthRoles.Admin,
                     Nic = "198000000001",
                     IsActive = true,
                     IsVerified = true,
                     ApprovalStatus = "Approved",
-                    Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.Backoffice),
+                    Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.Admin),
+                    CreatedAt = DateTime.UtcNow
+                },
+                new()
+                {
+                    Email = "admin@solar.com",
+                    Username = "admin",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@12345"),
+                    FullName = "Backoffice Administrator",
+                    Role = AuthRoles.Admin,
+                    Nic = "198000000002",
+                    IsActive = true,
+                    IsVerified = true,
+                    ApprovalStatus = "Approved",
+                    Permissions = AuthPermissions.GetDefaultPermissionsForRole(AuthRoles.Admin),
                     CreatedAt = DateTime.UtcNow
                 },
                 new()
@@ -125,7 +153,14 @@ public class AuthDatabaseInitializer : IAuthDatabaseInitializer
 
             foreach (var seed in seedUsers)
             {
-                var existing = await usersCollection.Find(u => u.Email == seed.Email).FirstOrDefaultAsync();
+                var lowerEmail = seed.Email.ToLowerInvariant();
+                var lowerUsername = seed.Username.ToLowerInvariant();
+
+                var existing = await usersCollection.Find(u =>
+                    u.Email.ToLower() == lowerEmail ||
+                    (u.Username != null && u.Username.ToLower() == lowerUsername)
+                ).FirstOrDefaultAsync();
+
                 if (existing == null)
                 {
                     await usersCollection.InsertOneAsync(seed);
@@ -133,14 +168,19 @@ public class AuthDatabaseInitializer : IAuthDatabaseInitializer
                 }
                 else
                 {
-                    // Ensure password and role match in case credentials changed
+                    // Ensure password, username, role, and permissions match in case credentials changed
                     var update = Builders<AuthUser>.Update
+                        .Set(u => u.Email, seed.Email)
+                        .Set(u => u.Username, seed.Username)
+                        .Set(u => u.FullName, seed.FullName)
                         .Set(u => u.PasswordHash, seed.PasswordHash)
                         .Set(u => u.Role, seed.Role)
+                        .Set(u => u.Permissions, seed.Permissions)
                         .Set(u => u.IsActive, true)
                         .Set(u => u.IsVerified, true)
                         .Set(u => u.ApprovalStatus, "Approved");
-                    await usersCollection.UpdateOneAsync(u => u.Email == seed.Email, update);
+                    await usersCollection.UpdateOneAsync(u => u.Id == existing.Id, update);
+                    _logger.LogInformation("Updated auth account credentials: {Email} ({Role})", seed.Email, seed.Role);
                 }
             }
 

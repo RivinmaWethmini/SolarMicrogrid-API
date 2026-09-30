@@ -110,7 +110,7 @@ public class ReservationController : ControllerBase
     // POST: api/reservations/{id}/approve
     [HttpPost("{id}/approve")]
     [HttpPut("{id}/approve")]
-    [Authorize(Roles = AuthRoles.Admin)]
+    [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Approve(string id)
     {
         // Inline comment: Begin execution of Approve method
@@ -135,7 +135,7 @@ public class ReservationController : ControllerBase
     // POST: api/reservations/{id}/reject
     [HttpPost("{id}/reject")]
     [HttpPut("{id}/reject")]
-    [Authorize(Roles = AuthRoles.Admin)]
+    [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Reject(string id)
     {
         // Inline comment: Begin execution of Reject method
@@ -184,7 +184,7 @@ public class ReservationController : ControllerBase
     // ─── UPDATE (Admin / Grid Operator Only) ───────────────────────────────────
     // PUT: api/reservations/{id}
     [HttpPut("{id}")]
-    [Authorize(Roles = AuthRoles.Admin)]
+    [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Update(string id, [FromBody] Reservation updatedReservation)
     {
         // Inline comment: Begin execution of Update method
@@ -208,7 +208,7 @@ public class ReservationController : ControllerBase
     // ─── DELETE (Admin / Grid Operator Only) ───────────────────────────────────
     // DELETE: api/reservations/{id}
     [HttpDelete("{id}")]
-    [Authorize(Roles = AuthRoles.Admin)]
+    [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Delete(string id)
     {
         // Inline comment: Begin execution of Delete method

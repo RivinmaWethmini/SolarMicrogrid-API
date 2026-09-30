@@ -42,6 +42,19 @@ public class TokenService : ITokenService
             new("approvalStatus", user.ApprovalStatus ?? "Approved")
         };
 
+        if (string.Equals(user.Role, AuthRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(user.Role, AuthRoles.Backoffice, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.Equals(user.Role, AuthRoles.Admin, StringComparison.OrdinalIgnoreCase))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, AuthRoles.Admin));
+            }
+            if (!string.Equals(user.Role, AuthRoles.Backoffice, StringComparison.OrdinalIgnoreCase))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, AuthRoles.Backoffice));
+            }
+        }
+
         // Add custom permission claims
         if (user.Permissions != null)
         {

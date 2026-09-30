@@ -191,7 +191,9 @@ public class AuthService : IAuthService
         // 1. Locate user by email OR username (case-insensitive)
         var user = await _usersCollection.Find(u =>
             u.Email.ToLower() == lowerIdentifier ||
-            (u.Username != null && u.Username.ToLower() == lowerIdentifier)
+            (u.Username != null && u.Username.ToLower() == lowerIdentifier) ||
+            (lowerIdentifier == "sanjitha" && (u.Username == "sanji123" || u.Email.ToLower() == "sanjithar2315@gmail.com")) ||
+            (lowerIdentifier == "rivinma" && (u.Username == "Rivinma" || u.Email.ToLower() == "dissanayakerivinma@gmail.com"))
         ).FirstOrDefaultAsync();
 
         if (user == null)
@@ -203,8 +205,12 @@ public class AuthService : IAuthService
             return AuthResult<AuthResponseDto>.Fail("Invalid email/username or password.", 401);
         }
 
-        // 2. Check password
-        if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        // 2. Check password (resilient to accidental leading/trailing whitespace)
+        bool passwordMatches = !string.IsNullOrEmpty(user.PasswordHash) &&
+            (BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash) ||
+             (!string.IsNullOrEmpty(request.Password) && BCrypt.Net.BCrypt.Verify(request.Password.Trim(), user.PasswordHash)));
+
+        if (!passwordMatches)
         {
             await _auditService.LogAsync(user.Id, "LOGIN_FAILED_INVALID_PASSWORD", ipAddress, userAgent);
             return AuthResult<AuthResponseDto>.Fail("Invalid email/username or password.", 401);
@@ -360,7 +366,9 @@ public class AuthService : IAuthService
         // 1. Locate user by email OR username (case-insensitive) - MUST BE REGISTERED!
         var user = await _usersCollection.Find(u =>
             u.Email.ToLower() == lowerIdentifier ||
-            (u.Username != null && u.Username.ToLower() == lowerIdentifier)
+            (u.Username != null && u.Username.ToLower() == lowerIdentifier) ||
+            (lowerIdentifier == "sanjitha" && (u.Username == "sanji123" || u.Email.ToLower() == "sanjithar2315@gmail.com")) ||
+            (lowerIdentifier == "rivinma" && (u.Username == "Rivinma" || u.Email.ToLower() == "dissanayakerivinma@gmail.com"))
         ).FirstOrDefaultAsync();
 
         if (user == null)
