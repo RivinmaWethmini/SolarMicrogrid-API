@@ -17,13 +17,21 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
+        // Inline comment: Begin execution of HandleRequirementAsync method
         if (context.User?.Identity?.IsAuthenticated != true)
         {
             return Task.CompletedTask;
         }
 
-        // Admin role has superuser privilege across all permissions
-        if (context.User.IsInRole(AuthRoles.Admin) || context.User.IsInRole(AuthRoles.Backoffice))
+        // Admin role has superuser privilege across all permissions (supports ClaimTypes.Role, role, Role)
+        var isAdminOrBackoffice = context.User.IsInRole(AuthRoles.Admin) || 
+                                  context.User.IsInRole(AuthRoles.Backoffice) ||
+                                  context.User.Claims.Any(c => 
+                                      (c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "Role") &&
+                                      (string.Equals(c.Value, AuthRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+                                       string.Equals(c.Value, AuthRoles.Backoffice, StringComparison.OrdinalIgnoreCase)));
+
+        if (isAdminOrBackoffice)
         {
             context.Succeed(requirement);
             return Task.CompletedTask;
