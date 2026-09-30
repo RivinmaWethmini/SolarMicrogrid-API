@@ -218,6 +218,44 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
+    /// Resets a prosumer registration back to PendingApproval for demonstration or testing purposes.
+    /// </summary>
+    [HttpPut("prosumers/{id}/pending")]
+    [HttpPost("prosumers/{id}/pending")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetToPending(string id)
+    {
+        // Inline comment: Begin execution of ResetToPending method
+        var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return NotFound(new { message = $"User with ID '{id}' was not found." });
+        }
+
+        var updateDef = Builders<AuthUser>.Update
+            .Set(u => u.ApprovalStatus, "PendingApproval")
+            .Set(u => u.ApprovedAt, null)
+            .Set(u => u.ApprovedBy, null)
+            .Set(u => u.RejectionReason, null)
+            .Set(u => u.UpdatedAt, DateTime.UtcNow);
+
+        await _usersCollection.UpdateOneAsync(u => u.Id == id, updateDef);
+
+        user.ApprovalStatus = "PendingApproval";
+        user.ApprovedAt = null;
+        user.ApprovedBy = null;
+        user.RejectionReason = null;
+
+        return Ok(new
+        {
+            success = true,
+            message = $"Prosumer '{user.Email}' status reset to PendingApproval.",
+            user = MapToDto(user)
+        });
+    }
+
+    /// <summary>
     /// Returns aggregated high-level administration statistics for the Operator Suite.
     /// </summary>
     [HttpGet("stats")]
