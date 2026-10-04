@@ -30,6 +30,7 @@ public class ReservationService : IReservationService
 
     public async Task<IEnumerable<Reservation>> GetAllAsync()
     {
+        // Inline comment: Begin execution of GetAllAsync method
         var list = await _reservations.Find(_ => true)
                                   .SortByDescending(r => r.CreatedAt)
                                   .ToListAsync();
@@ -46,6 +47,7 @@ public class ReservationService : IReservationService
 
     public async Task<Reservation?> GetByIdAsync(string id)
     {
+        // Inline comment: Begin execution of GetByIdAsync method
         var r = await _reservations.Find(x => x.Id == id).FirstOrDefaultAsync();
         if (r != null)
         {
@@ -59,6 +61,7 @@ public class ReservationService : IReservationService
 
     public async Task<IEnumerable<Reservation>> GetByProsumerIdAsync(string prosumerId)
     {
+        // Inline comment: Begin execution of GetByProsumerIdAsync method
         var filter = Builders<Reservation>.Filter.Eq(r => r.ProsumerId, prosumerId);
         var list = await _reservations.Find(filter)
                                   .SortByDescending(r => r.ReservationDate)
@@ -74,6 +77,7 @@ public class ReservationService : IReservationService
 
     private void EnsureApprovedQrPayload(Reservation r)
     {
+        // Inline comment: Begin execution of EnsureApprovedQrPayload method
         if (string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(r.QrPayload))
         {
             r.QrPayload = GenerateQrPayload(r);
@@ -92,6 +96,7 @@ public class ReservationService : IReservationService
 
     public async Task<ReservationStatsDto> GetStatsAsync()
     {
+        // Inline comment: Begin execution of GetStatsAsync method
         var all = await _reservations.Find(_ => true).ToListAsync();
         var now = DateTime.UtcNow;
 
@@ -111,6 +116,7 @@ public class ReservationService : IReservationService
     // ─── CREATE ────────────────────────────────────────────────────────────────
     public async Task<Reservation> CreateAsync(Reservation reservation)
     {
+        // Inline comment: Begin execution of CreateAsync method
         if (string.IsNullOrWhiteSpace(reservation.ProsumerId))
             throw new InvalidOperationException("Prosumer ID is required.");
 
@@ -172,6 +178,7 @@ public class ReservationService : IReservationService
     // ─── APPROVE ───────────────────────────────────────────────────────────────
     public async Task<bool> ApproveAsync(string id)
     {
+        // Inline comment: Begin execution of ApproveAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -196,6 +203,7 @@ public class ReservationService : IReservationService
     // ─── REJECT ────────────────────────────────────────────────────────────────
     public async Task<bool> RejectAsync(string id)
     {
+        // Inline comment: Begin execution of RejectAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -217,6 +225,7 @@ public class ReservationService : IReservationService
     // ─── CANCEL ────────────────────────────────────────────────────────────────
     public async Task<bool> CancelAsync(string id)
     {
+        // Inline comment: Begin execution of CancelAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -247,6 +256,7 @@ public class ReservationService : IReservationService
     // ─── UPDATE ────────────────────────────────────────────────────────────────
     public async Task<bool> UpdateAsync(string id, Reservation updatedReservation)
     {
+        // Inline comment: Begin execution of UpdateAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -338,6 +348,7 @@ public class ReservationService : IReservationService
 
     public async Task<bool> DeleteAsync(string id)
     {
+        // Inline comment: Begin execution of DeleteAsync method
         var result = await _reservations.DeleteOneAsync(r => r.Id == id);
         return result.IsAcknowledged && result.DeletedCount > 0;
     }

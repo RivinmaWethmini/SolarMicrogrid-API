@@ -1,3 +1,10 @@
+// ============================================================================
+// File: MicrogridNodesController.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: RESTful Web API controller for querying microgrid node capacity, battery status, and node CRUD operations.
+// ============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -7,6 +14,7 @@ namespace SolarAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/nodes")]
 public class MicrogridNodesController : ControllerBase
 {
     private readonly IMongoCollection<MicrogridNode> _nodes;
@@ -32,6 +40,7 @@ public class MicrogridNodesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<MicrogridNode>>> GetAll()
     {
+        // Inline comment: Begin execution of GetAll method
         var nodes = await _nodes
             .Find(_ => true)
             .SortByDescending(node => node.CreatedAt)
@@ -43,6 +52,7 @@ public class MicrogridNodesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<MicrogridNode>> GetById(string id)
     {
+        // Inline comment: Begin execution of GetById method
         if (!ObjectId.TryParse(id, out _))
         {
             return BadRequest(new
@@ -167,6 +177,7 @@ public class MicrogridNodesController : ControllerBase
     [HttpPatch("{id}/deactivate")]
     public async Task<IActionResult> Deactivate(string id)
     {
+        // Inline comment: Begin execution of Deactivate method
         if (!ObjectId.TryParse(id, out _))
         {
             return BadRequest(new
@@ -239,6 +250,7 @@ public class MicrogridNodesController : ControllerBase
     [HttpPatch("{id}/reactivate")]
     public async Task<IActionResult> Reactivate(string id)
     {
+        // Inline comment: Begin execution of Reactivate method
         if (!ObjectId.TryParse(id, out _))
         {
             return BadRequest(new

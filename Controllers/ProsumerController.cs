@@ -1,3 +1,13 @@
+
+// ============================================================================
+// File: ProsumerController.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: RESTful Web API controller for managing solar prosumers,
+//              capacity listings, and profile deactivation.
+// ============================================================================
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarAPI.Models;
 using SolarAPI.Services;
@@ -46,7 +56,8 @@ public class ProsumerController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Prosumer>> Create([FromBody] Prosumer prosumer)
+    public async Task<ActionResult<Prosumer>> Create(
+        [FromBody] Prosumer prosumer)
     {
         var created = await _prosumerService.CreateAsync(prosumer);
 
@@ -89,7 +100,10 @@ public class ProsumerController : ControllerBase
 
         return NoContent();
     }
+
     [HttpPatch("{nic}/reactivate")]
+    [HttpPost("{nic}/reactivate")]
+    [Authorize(Roles = "Admin,Backoffice")]
     public async Task<IActionResult> Reactivate(string nic)
     {
         var success = await _prosumerService.ReactivateAsync(nic);

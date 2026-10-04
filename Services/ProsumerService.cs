@@ -1,3 +1,11 @@
+
+// ============================================================================
+// File: ProsumerService.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Implementation of prosumer business operations, MongoDB persistence, and availability filtering.
+// ============================================================================
+
 using MongoDB.Driver;
 using SolarAPI.Models;
 
@@ -14,7 +22,9 @@ public class ProsumerService : IProsumerService
 
     public async Task<IEnumerable<Prosumer>> GetAllAsync()
     {
-        return await _prosumers.Find(_ => true).ToListAsync();
+        return await _prosumers
+            .Find(_ => true)
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<Prosumer>> GetAvailableAsync()
@@ -26,8 +36,15 @@ public class ProsumerService : IProsumerService
 
     public async Task<Prosumer?> GetByIdAsync(string nic)
     {
+        if (string.IsNullOrWhiteSpace(nic))
+        {
+            return null;
+        }
+
+        var normalizedNic = nic.Trim();
+
         return await _prosumers
-            .Find(p => p.NIC == nic)
+            .Find(p => p.NIC == normalizedNic)
             .FirstOrDefaultAsync();
     }
 
@@ -36,7 +53,14 @@ public class ProsumerService : IProsumerService
         prosumer.CreatedAt = DateTime.UtcNow;
         prosumer.IsAvailable = true;
 
+        if (string.IsNullOrWhiteSpace(prosumer.NIC) &&
+            !string.IsNullOrWhiteSpace(prosumer.UserId))
+        {
+            prosumer.NIC = prosumer.UserId;
+        }
+
         await _prosumers.InsertOneAsync(prosumer);
+
         return prosumer;
     }
 
@@ -49,44 +73,69 @@ public class ProsumerService : IProsumerService
             return false;
         }
 
-        updatedProsumer.NIC = nic;
+        updatedProsumer.NIC = existing.NIC;
         updatedProsumer.CreatedAt = existing.CreatedAt;
 
         var result = await _prosumers.ReplaceOneAsync(
-            p => p.NIC == nic,
+            p => p.NIC == existing.NIC,
             updatedProsumer);
 
-        return result.IsAcknowledged && result.ModifiedCount > 0;
+        return result.IsAcknowledged &&
+               (result.ModifiedCount > 0 || result.MatchedCount > 0);
     }
 
     public async Task<bool> DeactivateAsync(string nic)
     {
+        var existing = await GetByIdAsync(nic);
+
+        if (existing == null)
+        {
+            return false;
+        }
+
         var updateDefinition = Builders<Prosumer>.Update
             .Set(p => p.IsAvailable, false)
             .Set(p => p.AvailableEnergyKw, 0);
 
         var result = await _prosumers.UpdateOneAsync(
-            p => p.NIC == nic,
+            p => p.NIC == existing.NIC,
             updateDefinition);
 
-        return result.IsAcknowledged && result.ModifiedCount > 0;
+        return result.IsAcknowledged &&
+               (result.ModifiedCount > 0 || result.MatchedCount > 0);
     }
+
     public async Task<bool> ReactivateAsync(string nic)
     {
+        var existing = await GetByIdAsync(nic);
+
+        if (existing == null)
+        {
+            return false;
+        }
+
         var updateDefinition = Builders<Prosumer>.Update
             .Set(p => p.IsAvailable, true);
 
         var result = await _prosumers.UpdateOneAsync(
-            p => p.NIC == nic,
+            p => p.NIC == existing.NIC,
             updateDefinition);
 
-        return result.IsAcknowledged && result.ModifiedCount > 0;
+        return result.IsAcknowledged &&
+               (result.ModifiedCount > 0 || result.MatchedCount > 0);
     }
 
     public async Task<bool> DeleteAsync(string nic)
     {
+        var existing = await GetByIdAsync(nic);
+
+        if (existing == null)
+        {
+            return false;
+        }
+
         var result = await _prosumers.DeleteOneAsync(
-            p => p.NIC == nic);
+            p => p.NIC == existing.NIC);
 
         return result.IsAcknowledged && result.DeletedCount > 0;
     }
