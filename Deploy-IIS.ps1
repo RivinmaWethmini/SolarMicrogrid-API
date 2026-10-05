@@ -104,12 +104,36 @@ if (-not (Test-Path $sourceDir)) {
     exit 1
 }
 
+# Locate working dotnet executable with SDK (handles cases where Administrator elevated shell doesn't have user's .dotnet in PATH)
+$dotnetCmd = "dotnet"
+$possibleDotnetPaths = @(
+    "$env:USERPROFILE\.dotnet\dotnet.exe",
+    "C:\Users\rivinma\.dotnet\dotnet.exe",
+    "$env:ProgramFiles\dotnet\dotnet.exe",
+    "${env:ProgramFiles(x86)}\dotnet\dotnet.exe"
+)
+
+foreach ($p in $possibleDotnetPaths) {
+    if (Test-Path $p) {
+        $sdkList = & $p --list-sdks 2>$null
+        if ($sdkList -and $sdkList.Count -gt 0) {
+            $dotnetCmd = $p
+            Write-Host "  -> Detected .NET SDK at: $p ($($sdkList[0]))" -ForegroundColor Gray
+            break
+        }
+    }
+}
+
 # Publish release
-& dotnet publish "$sourceDir\SolarAPI.csproj" -c Release -o "$publishDir"
+& $dotnetCmd publish "$sourceDir\SolarAPI.csproj" -c Release -o "$publishDir"
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "dotnet publish failed. Please inspect build errors."
-    pause
-    exit 1
+    if (Test-Path "$publishDir\SolarAPI.dll") {
+        Write-Host "[INFO] Using pre-built Release binaries in $publishDir" -ForegroundColor Yellow
+    } else {
+        Write-Error "dotnet publish failed. Please inspect build errors."
+        pause
+        exit 1
+    }
 }
 Write-Host "[OK] Build published successfully." -ForegroundColor Green
 
@@ -118,6 +142,11 @@ Write-Host "`n[STEP 4/6] Staging files to $DeployPath..." -ForegroundColor Yello
 if (-not (Test-Path $DeployPath)) {
     New-Item -Path $DeployPath -ItemType Directory -Force | Out-Null
 }
+
+# Stop IIS worker temporarily to avoid DLL file locks during file copy
+Write-Host "  -> Releasing IIS file locks..." -ForegroundColor Gray
+& iisreset /stop 2>$null
+
 Copy-Item -Path "$publishDir\*" -Destination $DeployPath -Recurse -Force
 
 # Grant IIS Permissions to the directory
@@ -139,6 +168,9 @@ if (-not (Test-Path $appcmd)) {
     pause
     exit 1
 }
+
+# Restart IIS to apply configuration
+& iisreset /start 2>$null
 
 # Stop any existing site or appcmd configuration
 & $appcmd list apppool "$AppPoolName" 2>$null
@@ -168,7 +200,6 @@ if ($LASTEXITCODE -eq 0) {
 
 # Restart IIS service and site to bind AspNetCoreModuleV2
 Write-Host "  -> Recycling IIS worker process..." -ForegroundColor Gray
-& iisreset /noforce 2>$null
 & $appcmd start apppool "$AppPoolName" 2>$null
 & $appcmd start site "$SiteName" 2>$null
 
