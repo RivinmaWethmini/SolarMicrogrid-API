@@ -1,3 +1,4 @@
+
 // ============================================================================
 // File: Prosumer.cs
 // Project: SolarAPI - Smart Solar Microgrid Trading System
