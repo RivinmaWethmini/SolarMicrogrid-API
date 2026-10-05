@@ -1,10 +1,13 @@
+
 // ============================================================================
 // File: ProsumerController.cs
 // Project: SolarAPI - Smart Solar Microgrid Trading System
 // Module: SE4040 - Enterprise Application Development
-// Description: RESTful Web API controller for managing solar prosumers, capacity listings, and profile deactivation.
+// Description: RESTful Web API controller for managing solar prosumers,
+//              capacity listings, and profile deactivation.
 // ============================================================================
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarAPI.Models;
 using SolarAPI.Services;
@@ -38,87 +41,103 @@ public class ProsumerController : ControllerBase
         return Ok(prosumers);
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Prosumer>> GetById(string id)
+    [HttpGet("{nic}")]
+    public async Task<ActionResult<Prosumer>> GetById(string nic)
     {
         // Inline comment: Begin execution of GetById method
-        var prosumer = await _prosumerService.GetByIdAsync(id);
+        var prosumer = await _prosumerService.GetByIdAsync(nic);
+
         if (prosumer == null)
         {
-            return NotFound(new { message = $"Prosumer with ID '{id}' was not found." });
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return Ok(prosumer);
     }
 
     [HttpPost]
-    public async Task<ActionResult<Prosumer>> Create([FromBody] Prosumer prosumer)
+    public async Task<ActionResult<Prosumer>> Create(
+        [FromBody] Prosumer prosumer)
     {
         // Inline comment: Begin execution of Create method
         var created = await _prosumerService.CreateAsync(prosumer);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { nic = created.NIC },
+            created);
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, [FromBody] Prosumer prosumer)
+    [HttpPut("{nic}")]
+    public async Task<IActionResult> Update(
+        string nic,
+        [FromBody] Prosumer prosumer)
     {
         // Inline comment: Begin execution of Update method
-        var success = await _prosumerService.UpdateAsync(id, prosumer);
+        var success = await _prosumerService.UpdateAsync(nic, prosumer);
+
         if (!success)
         {
-            return NotFound(new { message = $"Prosumer with ID '{id}' was not found." });
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return NoContent();
     }
 
-    [HttpPatch("{id}/deactivate")]
-    public async Task<IActionResult> Deactivate(string id)
+    [HttpPatch("{nic}/deactivate")]
+    public async Task<IActionResult> Deactivate(string nic)
     {
         // Inline comment: Begin execution of Deactivate method
-        var success = await _prosumerService.DeactivateAsync(id);
+        var success = await _prosumerService.DeactivateAsync(nic);
+
         if (!success)
         {
-            return NotFound(new { message = $"Prosumer with ID or NIC '{id}' was not found." });
-        }
-
-        return NoContent();
-    }
-
-    [HttpPatch("{id}/reactivate")]
-    [HttpPost("{id}/reactivate")]
-    public async Task<IActionResult> Reactivate(string id)
-    {
-        // Business Rule: Deactivated accounts can only be reactivated by a Backoffice officer
-        if (User.Identity != null && User.Identity.IsAuthenticated)
-        {
-            var isBackofficeOrAdmin = User.IsInRole("Admin") || User.IsInRole("Backoffice");
-            if (!isBackofficeOrAdmin)
+            return NotFound(new
             {
-                return StatusCode(StatusCodes.Status403Forbidden, new
-                {
-                    message = "Access denied: Deactivated prosumer accounts can only be reactivated by a Backoffice officer."
-                });
-            }
-        }
-
-        var success = await _prosumerService.ReactivateAsync(id);
-        if (!success)
-        {
-            return NotFound(new { message = $"Prosumer with ID or NIC '{id}' was not found." });
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [HttpPatch("{nic}/reactivate")]
+    [HttpPost("{nic}/reactivate")]
+    [Authorize(Roles = "Admin,Backoffice")]
+    public async Task<IActionResult> Reactivate(string nic)
+    {
+        // Inline comment: Begin execution of Reactivate method - Backoffice authorization enforced
+        var success = await _prosumerService.ReactivateAsync(nic);
+
+        if (!success)
+        {
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{nic}")]
+    public async Task<IActionResult> Delete(string nic)
     {
         // Inline comment: Begin execution of Delete method
-        var success = await _prosumerService.DeleteAsync(id);
+        var success = await _prosumerService.DeleteAsync(nic);
+
         if (!success)
         {
-            return NotFound(new { message = $"Prosumer with ID '{id}' was not found." });
+            return NotFound(new
+            {
+                message = $"Prosumer with NIC '{nic}' was not found."
+            });
         }
 
         return NoContent();

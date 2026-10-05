@@ -1,3 +1,4 @@
+
 // ============================================================================
 // File: ProsumerService.cs
 // Project: SolarAPI - Smart Solar Microgrid Trading System
@@ -21,106 +22,136 @@ public class ProsumerService : IProsumerService
 
     public async Task<IEnumerable<Prosumer>> GetAllAsync()
     {
-        // Inline comment: Begin execution of GetAllAsync method
-        return await _prosumers.Find(_ => true).ToListAsync();
+        return await _prosumers
+            .Find(_ => true)
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<Prosumer>> GetAvailableAsync()
     {
-        // Inline comment: Begin execution of GetAvailableAsync method
-        return await _prosumers.Find(p => p.IsAvailable && p.AvailableEnergyKw > 0).ToListAsync();
+        return await _prosumers
+            .Find(p => p.IsAvailable && p.AvailableEnergyKw > 0)
+            .ToListAsync();
     }
 
-    public async Task<Prosumer?> GetByIdAsync(string identifier)
+    public async Task<Prosumer?> GetByIdAsync(string nic)
     {
-        // Inline comment: Begin execution of GetByIdAsync method to query prosumer by NIC or MongoDB ID
-        if (string.IsNullOrWhiteSpace(identifier)) return null;
-        var trimmed = identifier.Trim();
-
-        var builder = Builders<Prosumer>.Filter;
-        var filter = builder.Eq(p => p.NIC, trimmed);
-
-        if (MongoDB.Bson.ObjectId.TryParse(trimmed, out _))
+        // Inline comment: Begin execution of GetByIdAsync method to query prosumer by NIC or ID
+        if (string.IsNullOrWhiteSpace(nic))
         {
-            filter |= builder.Eq(p => p.Id, trimmed) | builder.Eq(p => p.UserId, trimmed);
+            return null;
         }
 
-        return await _prosumers.Find(filter).FirstOrDefaultAsync();
+        var normalizedNic = nic.Trim();
+
+        var builder = Builders<Prosumer>.Filter;
+        var filter = builder.Eq(p => p.NIC, normalizedNic);
+
+        if (MongoDB.Bson.ObjectId.TryParse(normalizedNic, out _))
+        {
+            filter |= builder.Eq(p => p.Id, normalizedNic) | builder.Eq(p => p.UserId, normalizedNic);
+        }
+
+        return await _prosumers
+            .Find(filter)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<Prosumer> CreateAsync(Prosumer prosumer)
     {
-        // Inline comment: Begin execution of CreateAsync method to persist a new prosumer profile
-        // Business logic: enforce clean creation state
-        prosumer.Id = null; // Let MongoDB generate the ObjectId
+        // Inline comment: Begin execution of CreateAsync method
         prosumer.CreatedAt = DateTime.UtcNow;
         prosumer.IsAvailable = true;
 
-        if (string.IsNullOrWhiteSpace(prosumer.NIC) && !string.IsNullOrWhiteSpace(prosumer.UserId))
+        if (string.IsNullOrWhiteSpace(prosumer.NIC) &&
+            !string.IsNullOrWhiteSpace(prosumer.UserId))
         {
             prosumer.NIC = prosumer.UserId;
         }
 
         await _prosumers.InsertOneAsync(prosumer);
+
         return prosumer;
     }
 
-    public async Task<bool> UpdateAsync(string identifier, Prosumer updatedProsumer)
+    public async Task<bool> UpdateAsync(string nic, Prosumer updatedProsumer)
     {
-        // Inline comment: Begin execution of UpdateAsync method to update prosumer properties
-        // Business logic: verify existence before update
-        var existing = await GetByIdAsync(identifier);
+        // Inline comment: Begin execution of UpdateAsync method
+        var existing = await GetByIdAsync(nic);
+
         if (existing == null)
         {
             return false;
         }
 
         updatedProsumer.Id = existing.Id;
-        if (string.IsNullOrWhiteSpace(updatedProsumer.NIC))
-        {
-            updatedProsumer.NIC = existing.NIC;
-        }
-        updatedProsumer.CreatedAt = existing.CreatedAt; // Preserve original creation timestamp
+        updatedProsumer.NIC = existing.NIC;
+        updatedProsumer.CreatedAt = existing.CreatedAt;
 
-        var result = await _prosumers.ReplaceOneAsync(p => p.Id == existing.Id, updatedProsumer);
-        return result.IsAcknowledged && (result.ModifiedCount > 0 || result.MatchedCount > 0);
+        var result = await _prosumers.ReplaceOneAsync(
+            p => p.Id == existing.Id,
+            updatedProsumer);
+
+        return result.IsAcknowledged &&
+               (result.ModifiedCount > 0 || result.MatchedCount > 0);
     }
 
-    public async Task<bool> DeactivateAsync(string identifier)
+    public async Task<bool> DeactivateAsync(string nic)
     {
-        // Inline comment: Begin execution of DeactivateAsync method to set prosumer availability to false
-        var existing = await GetByIdAsync(identifier);
-        if (existing == null) return false;
+        // Inline comment: Begin execution of DeactivateAsync method
+        var existing = await GetByIdAsync(nic);
 
-        // Business logic: set availability to false and zero out active available energy offer
+        if (existing == null)
+        {
+            return false;
+        }
+
         var updateDefinition = Builders<Prosumer>.Update
             .Set(p => p.IsAvailable, false)
             .Set(p => p.AvailableEnergyKw, 0);
 
-        var result = await _prosumers.UpdateOneAsync(p => p.Id == existing.Id, updateDefinition);
-        return result.IsAcknowledged && (result.ModifiedCount > 0 || result.MatchedCount > 0);
+        var result = await _prosumers.UpdateOneAsync(
+            p => p.Id == existing.Id,
+            updateDefinition);
+
+        return result.IsAcknowledged &&
+               (result.ModifiedCount > 0 || result.MatchedCount > 0);
     }
 
-    public async Task<bool> ReactivateAsync(string identifier)
+    public async Task<bool> ReactivateAsync(string nic)
     {
-        // Inline comment: Begin execution of ReactivateAsync method to reactivate prosumer availability
-        var existing = await GetByIdAsync(identifier);
-        if (existing == null) return false;
+        // Inline comment: Begin execution of ReactivateAsync method
+        var existing = await GetByIdAsync(nic);
+
+        if (existing == null)
+        {
+            return false;
+        }
 
         var updateDefinition = Builders<Prosumer>.Update
             .Set(p => p.IsAvailable, true);
 
-        var result = await _prosumers.UpdateOneAsync(p => p.Id == existing.Id, updateDefinition);
-        return result.IsAcknowledged && (result.ModifiedCount > 0 || result.MatchedCount > 0);
+        var result = await _prosumers.UpdateOneAsync(
+            p => p.Id == existing.Id,
+            updateDefinition);
+
+        return result.IsAcknowledged &&
+               (result.ModifiedCount > 0 || result.MatchedCount > 0);
     }
 
-    public async Task<bool> DeleteAsync(string identifier)
+    public async Task<bool> DeleteAsync(string nic)
     {
-        // Inline comment: Begin execution of DeleteAsync method to remove prosumer document from database
-        var existing = await GetByIdAsync(identifier);
-        if (existing == null) return false;
+        // Inline comment: Begin execution of DeleteAsync method
+        var existing = await GetByIdAsync(nic);
 
-        var result = await _prosumers.DeleteOneAsync(p => p.Id == existing.Id);
+        if (existing == null)
+        {
+            return false;
+        }
+
+        var result = await _prosumers.DeleteOneAsync(
+            p => p.Id == existing.Id);
+
         return result.IsAcknowledged && result.DeletedCount > 0;
     }
 }
