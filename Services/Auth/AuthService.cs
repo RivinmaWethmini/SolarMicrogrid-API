@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using SolarAPI.Configurations;
 using SolarAPI.DTOs.Auth;
+using SolarAPI.Models;
 using SolarAPI.Models.Auth;
 
 namespace SolarAPI.Services.Auth;
@@ -19,6 +20,7 @@ public class AuthService : IAuthService
     private readonly IMongoCollection<AuthUser> _usersCollection;
     private readonly IMongoCollection<OtpVerification> _otpCollection;
     private readonly IMongoCollection<UserSession> _sessionsCollection;
+    private readonly IMongoCollection<Prosumer> _prosumersCollection;
     private readonly JwtSettings _jwtSettings;
     private readonly IOtpService _otpService;
     private readonly ITokenService _tokenService;
@@ -38,6 +40,7 @@ public class AuthService : IAuthService
         _usersCollection = database.GetCollection<AuthUser>("AuthUsers");
         _otpCollection = database.GetCollection<OtpVerification>("OtpVerifications");
         _sessionsCollection = database.GetCollection<UserSession>("UserSessions");
+        _prosumersCollection = database.GetCollection<Prosumer>("Prosumers");
         _jwtSettings = jwtOptions.Value;
         _otpService = otpService;
         _tokenService = tokenService;
@@ -115,13 +118,18 @@ public class AuthService : IAuthService
 
         // 4. Resolve Role & Permissions
         string assignedRole = !string.IsNullOrWhiteSpace(request.Role) && AuthRoles.IsValidRole(request.Role)
-            ? request.Role
+            ? AuthRoles.NormalizeRole(request.Role)
             : AuthRoles.Consumer;
 
         var permissions = AuthPermissions.GetDefaultPermissionsForRole(assignedRole);
 
-        // BUSINESS RULE: Prosumers require Operator Approval before accessing full trading features
-        string approvalStatus = string.Equals(assignedRole, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)
+        // BUSINESS RULE: Prosumers and Operators require Approval
+        // - Prosumers require Operator Approval before accessing full trading features
+        // - Operators require Admin Approval even to login or visit their account
+        bool isOperator = AuthRoles.IsOperatorRole(assignedRole);
+        bool isProsumer = string.Equals(assignedRole, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase);
+
+        string approvalStatus = (isOperator || isProsumer)
             ? "PendingApproval"
             : "Approved";
 
@@ -149,6 +157,20 @@ public class AuthService : IAuthService
             ["username"] = user.Username ?? "none",
             ["authType"] = "password"
         });
+
+        // Operators and Prosumers require Admin approval before logging in or accessing the system: do not issue active session/tokens
+        if (isOperator || isProsumer)
+        {
+            return AuthResult<AuthResponseDto>.Ok(new AuthResponseDto
+            {
+                AccessToken = string.Empty,
+                RefreshToken = string.Empty,
+                TokenType = "Bearer",
+                ExpiresIn = 0,
+                SessionId = string.Empty,
+                User = MapToUserDto(user)
+            });
+        }
 
         // 5. Create Session & Tokens
         string rawRefreshToken = _tokenService.GenerateRefreshToken();
@@ -221,6 +243,25 @@ public class AuthService : IAuthService
         {
             await _auditService.LogAsync(user.Id, "LOGIN_FAILED_DEACTIVATED", ipAddress, userAgent);
             return AuthResult<AuthResponseDto>.Fail("This account has been deactivated. Please contact support.", 403);
+        }
+
+        // 3b. Operator & Prosumer Approval Gate: Both Operator and Prosumer accounts require Admin approval even to login or visit their account
+        bool requiresApproval = AuthRoles.IsOperatorRole(user.Role) || string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase);
+        if (requiresApproval)
+        {
+            string roleTitle = string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase) ? "Prosumer" : "Operator";
+            if (string.Equals(user.ApprovalStatus, "PendingApproval", StringComparison.OrdinalIgnoreCase))
+            {
+                await _auditService.LogAsync(user.Id, $"LOGIN_FAILED_{roleTitle.ToUpperInvariant()}_PENDING", ipAddress, userAgent);
+                return AuthResult<AuthResponseDto>.Fail($"Your {roleTitle} account is pending approval by an Administrator. You cannot sign in until your account has been approved.", 403);
+            }
+
+            if (string.Equals(user.ApprovalStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                await _auditService.LogAsync(user.Id, $"LOGIN_FAILED_{roleTitle.ToUpperInvariant()}_REJECTED", ipAddress, userAgent);
+                string reason = !string.IsNullOrWhiteSpace(user.RejectionReason) ? $" Reason: {user.RejectionReason}" : string.Empty;
+                return AuthResult<AuthResponseDto>.Fail($"Your {roleTitle} account registration was declined by an Administrator.{reason}", 403);
+            }
         }
 
         // 4. Create Session & Tokens
@@ -386,6 +427,22 @@ public class AuthService : IAuthService
             return AuthResult<SendOtpResponseDto>.Fail("This account has been deactivated. Please contact support.", 403);
         }
 
+        if (AuthRoles.IsOperatorRole(user.Role))
+        {
+            if (string.Equals(user.ApprovalStatus, "PendingApproval", StringComparison.OrdinalIgnoreCase))
+            {
+                await _auditService.LogAsync(user.Id, "LOGIN_OTP_OPERATOR_PENDING", ipAddress, userAgent);
+                return AuthResult<SendOtpResponseDto>.Fail("Your Operator account is pending approval by an Administrator. You cannot sign in until your account has been approved.", 403);
+            }
+
+            if (string.Equals(user.ApprovalStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                await _auditService.LogAsync(user.Id, "LOGIN_OTP_OPERATOR_REJECTED", ipAddress, userAgent);
+                string reason = !string.IsNullOrWhiteSpace(user.RejectionReason) ? $" Reason: {user.RejectionReason}" : string.Empty;
+                return AuthResult<SendOtpResponseDto>.Fail($"Your Operator account registration was rejected by an Administrator.{reason}", 403);
+            }
+        }
+
         string email = user.Email;
 
         // 2. Check for cooldown
@@ -526,13 +583,20 @@ public class AuthService : IAuthService
         // 5. Must be registered user or creating during registration
         if (user == null)
         {
-            string assignedRole = !string.IsNullOrWhiteSpace(otpRecord.RequestedRole) && AuthRoles.IsValidRole(otpRecord.RequestedRole)
+            string requestedRole = !string.IsNullOrWhiteSpace(otpRecord.RequestedRole)
                 ? otpRecord.RequestedRole
+                : AuthRoles.Consumer;
+
+            string assignedRole = AuthRoles.IsValidRole(requestedRole)
+                ? AuthRoles.NormalizeRole(requestedRole)
                 : AuthRoles.Consumer;
 
             var permissions = AuthPermissions.GetDefaultPermissionsForRole(assignedRole);
 
-            string approvalStatus = string.Equals(assignedRole, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)
+            bool isOperator = AuthRoles.IsOperatorRole(assignedRole);
+            bool isProsumer = string.Equals(assignedRole, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase);
+
+            string approvalStatus = (isOperator || isProsumer)
                 ? "PendingApproval"
                 : "Approved";
 
@@ -553,11 +617,24 @@ public class AuthService : IAuthService
             };
 
             await _usersCollection.InsertOneAsync(user);
-            await _auditService.LogAsync(user.Id, "USER_REGISTERED", ipAddress, userAgent, new()
+            await _auditService.LogAsync(user.Id, "USER_REGISTERED_OTP", ipAddress, userAgent, new()
             {
                 ["role"] = user.Role,
                 ["approvalStatus"] = user.ApprovalStatus
             });
+
+            if (isOperator || isProsumer)
+            {
+                return AuthResult<AuthResponseDto>.Ok(new AuthResponseDto
+                {
+                    AccessToken = string.Empty,
+                    RefreshToken = string.Empty,
+                    TokenType = "Bearer",
+                    ExpiresIn = 0,
+                    SessionId = string.Empty,
+                    User = MapToUserDto(user)
+                });
+            }
         }
         else
         {
@@ -565,6 +642,24 @@ public class AuthService : IAuthService
             {
                 await _auditService.LogAsync(user.Id, "LOGIN_FAILED_DEACTIVATED", ipAddress, userAgent);
                 return AuthResult<AuthResponseDto>.Fail("This account has been deactivated. Please contact support.", 403);
+            }
+
+            bool requiresApproval = AuthRoles.IsOperatorRole(user.Role) || string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase);
+            if (requiresApproval)
+            {
+                string roleTitle = string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase) ? "Prosumer" : "Operator";
+                if (string.Equals(user.ApprovalStatus, "PendingApproval", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _auditService.LogAsync(user.Id, $"OTP_VERIFY_{roleTitle.ToUpperInvariant()}_PENDING", ipAddress, userAgent);
+                    return AuthResult<AuthResponseDto>.Fail($"Your {roleTitle} account is pending approval by an Administrator. You cannot sign in until your account has been approved.", 403);
+                }
+
+                if (string.Equals(user.ApprovalStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _auditService.LogAsync(user.Id, $"OTP_VERIFY_{roleTitle.ToUpperInvariant()}_REJECTED", ipAddress, userAgent);
+                    string reason = !string.IsNullOrWhiteSpace(user.RejectionReason) ? $" Reason: {user.RejectionReason}" : string.Empty;
+                    return AuthResult<AuthResponseDto>.Fail($"Your {roleTitle} account registration was declined by an Administrator.{reason}", 403);
+                }
             }
 
             // Update verification status and timestamp, plus username/password if missing
@@ -697,6 +792,15 @@ public class AuthService : IAuthService
             return AuthResult<AuthResponseDto>.Fail("User account is inactive or not found.", 403);
         }
 
+        if (AuthRoles.IsOperatorRole(user.Role) && !string.Equals(user.ApprovalStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            await _sessionsCollection.UpdateOneAsync(
+                s => s.Id == session.Id,
+                Builders<UserSession>.Update.Set(s => s.RevokedAt, DateTime.UtcNow));
+
+            return AuthResult<AuthResponseDto>.Fail("Your Operator account requires Administrator approval before you can access the system.", 403);
+        }
+
         // 5. Execute Refresh Token Rotation (RTR)
         string newRefreshToken = _tokenService.GenerateRefreshToken();
         string newRefreshTokenHash = _tokenService.HashToken(newRefreshToken);
@@ -809,6 +913,136 @@ public class AuthService : IAuthService
         });
 
         return AuthResult<bool>.Ok(true);
+    }
+
+    public async Task<AuthUserDto?> GetUserByIdAsync(string userId)
+    {
+        // Inline comment: Begin execution of GetUserByIdAsync method
+        var user = await _usersCollection.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        return user != null ? MapToUserDto(user) : null;
+    }
+
+    public async Task<AuthResult<AuthUserDto>> UpdateProfileAsync(string userId, UpdateProfileRequestDto request, string? ipAddress, string? userAgent)
+    {
+        // Inline comment: Begin execution of UpdateProfileAsync method
+        var user = await _usersCollection.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return AuthResult<AuthUserDto>.Fail("User account not found.", 404);
+        }
+
+        var updateDefs = new List<UpdateDefinition<AuthUser>>();
+
+        // 1. Update Full Name
+        if (request.FullName != null)
+        {
+            var trimmedName = request.FullName.Trim();
+            user.FullName = trimmedName;
+            updateDefs.Add(Builders<AuthUser>.Update.Set(u => u.FullName, trimmedName));
+        }
+
+        // 2. Update Username
+        if (!string.IsNullOrWhiteSpace(request.Username))
+        {
+            var trimmedUsername = request.Username.Trim();
+            if (!string.Equals(user.Username, trimmedUsername, StringComparison.OrdinalIgnoreCase))
+            {
+                var lowerUsername = trimmedUsername.ToLowerInvariant();
+                var existingUsername = await _usersCollection.Find(u => u.Id != userId && u.Username != null && u.Username.ToLower() == lowerUsername).FirstOrDefaultAsync();
+                if (existingUsername != null)
+                {
+                    return AuthResult<AuthUserDto>.Fail("This username is already taken. Please choose another.", 400);
+                }
+
+                user.Username = trimmedUsername;
+                updateDefs.Add(Builders<AuthUser>.Update.Set(u => u.Username, trimmedUsername));
+            }
+        }
+
+        // 3. Password change
+        if (!string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+            {
+                return AuthResult<AuthUserDto>.Fail("Current password is required to change your password.", 400);
+            }
+
+            if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            {
+                return AuthResult<AuthUserDto>.Fail("Current password verification failed. Please enter your correct current password.", 400);
+            }
+
+            if (request.NewPassword.Length < 6)
+            {
+                return AuthResult<AuthUserDto>.Fail("New password must be at least 6 characters.", 400);
+            }
+
+            var newHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.PasswordHash = newHash;
+            updateDefs.Add(Builders<AuthUser>.Update.Set(u => u.PasswordHash, newHash));
+        }
+
+        if (updateDefs.Count == 0)
+        {
+            return AuthResult<AuthUserDto>.Ok(MapToUserDto(user));
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+        updateDefs.Add(Builders<AuthUser>.Update.Set(u => u.UpdatedAt, DateTime.UtcNow));
+
+        await _usersCollection.UpdateOneAsync(u => u.Id == userId, Builders<AuthUser>.Update.Combine(updateDefs));
+
+        await _auditService.LogAsync(userId, "PROFILE_UPDATED", ipAddress, userAgent, new()
+        {
+            ["username"] = user.Username ?? string.Empty,
+            ["email"] = user.Email
+        });
+
+        return AuthResult<AuthUserDto>.Ok(MapToUserDto(user));
+    }
+
+    public async Task<AuthResult<bool>> DeleteAccountAsync(string userId, string? ipAddress, string? userAgent)
+    {
+        // Inline comment: Begin execution of DeleteAccountAsync method
+        var user = await _usersCollection.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return AuthResult<bool>.Fail("User account not found.", 404);
+        }
+
+        // CRITICAL SECURITY ENFORCEMENT: Admin accounts cannot be deleted to prevent system lockout
+        if (string.Equals(user.Role, AuthRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(user.Role, AuthRoles.Backoffice, StringComparison.OrdinalIgnoreCase))
+        {
+            await _auditService.LogAsync(userId, "ADMIN_ACCOUNT_DELETION_BLOCKED", ipAddress, userAgent, new()
+            {
+                ["attemptedRole"] = user.Role
+            });
+            return AuthResult<bool>.Fail("Administrative accounts cannot be deleted to prevent microgrid system lockout.", 403);
+        }
+
+        // For Prosumer accounts, clean up associated solar assets linked to their account
+        if (string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase))
+        {
+            await _prosumersCollection.DeleteManyAsync(p => p.UserId == userId || (!string.IsNullOrEmpty(user.Nic) && p.NIC == user.Nic));
+        }
+
+        // Revoke and delete all active sessions & refresh tokens
+        await _sessionsCollection.DeleteManyAsync(s => s.UserId == userId);
+
+        // Delete any pending OTPs
+        await _otpCollection.DeleteManyAsync(o => o.Email == user.Email);
+
+        // Delete user record from AuthUsers
+        var deleteResult = await _usersCollection.DeleteOneAsync(u => u.Id == userId);
+
+        await _auditService.LogAsync(userId, "ACCOUNT_PERMANENTLY_DELETED", ipAddress, userAgent, new()
+        {
+            ["email"] = user.Email,
+            ["role"] = user.Role
+        });
+
+        return AuthResult<bool>.Ok(deleteResult.DeletedCount > 0);
     }
 
     private static AuthUserDto MapToUserDto(AuthUser user)

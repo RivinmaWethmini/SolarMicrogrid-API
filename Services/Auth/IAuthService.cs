@@ -31,4 +31,7 @@ public interface IAuthService
     Task<AuthResult<bool>> LogoutAsync(string userId, string? sessionId, string? rawRefreshToken, string? ipAddress, string? userAgent);
     Task<AuthResult<List<UserSessionResponseDto>>> GetUserSessionsAsync(string userId, string? currentSessionId);
     Task<AuthResult<bool>> RevokeSessionAsync(string sessionId, string requestingUserId, bool isAdmin, string? ipAddress, string? userAgent);
+    Task<AuthUserDto?> GetUserByIdAsync(string userId);
+    Task<AuthResult<AuthUserDto>> UpdateProfileAsync(string userId, UpdateProfileRequestDto request, string? ipAddress, string? userAgent);
+    Task<AuthResult<bool>> DeleteAccountAsync(string userId, string? ipAddress, string? userAgent);
 }

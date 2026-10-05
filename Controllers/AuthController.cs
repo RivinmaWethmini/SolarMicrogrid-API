@@ -292,25 +292,81 @@ public class AuthController : ControllerBase
     [Authorize]
     [ProducesResponseType(typeof(AuthUserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public IActionResult GetCurrentUser()
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCurrentUser()
     {
         // Inline comment: Begin execution of GetCurrentUser method
         var userId = GetUserId();
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("email")?.Value ?? string.Empty;
-        var role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-        var permissions = User.FindAll("permission").Select(c => c.Value).ToList();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var userDto = new AuthUserDto
+        var userDto = await _authService.GetUserByIdAsync(userId);
+        if (userDto == null)
         {
-            Id = userId ?? string.Empty,
-            Email = email,
-            Role = role,
-            Permissions = permissions,
-            IsActive = true,
-            IsVerified = true
-        };
+            return NotFound(new { message = "User account not found." });
+        }
 
         return Ok(userDto);
+    }
+
+    /// <summary>
+    /// Update current authenticated user profile details (Full Name, Username, and optional Password change).
+    /// Available for all authenticated roles (Consumer, Prosumer, Admin).
+    /// </summary>
+    [HttpPut("profile")]
+    [HttpPut("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(AuthUserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequestDto request)
+    {
+        // Inline comment: Begin execution of UpdateProfile method
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var ip = GetClientIpAddress();
+        var userAgent = GetUserAgent();
+
+        var result = await _authService.UpdateProfileAsync(userId, request, ip, userAgent);
+        if (!result.Success)
+        {
+            return StatusCode(result.StatusCode, new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Data);
+    }
+
+    /// <summary>
+    /// Permanently delete current user account. Allowed for Consumer and Prosumer roles.
+    /// Admin accounts cannot be deleted to prevent microgrid system lockout.
+    /// </summary>
+    [HttpDelete("account")]
+    [HttpDelete("me")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        // Inline comment: Begin execution of DeleteAccount method
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var ip = GetClientIpAddress();
+        var userAgent = GetUserAgent();
+
+        var result = await _authService.DeleteAccountAsync(userId, ip, userAgent);
+        if (!result.Success)
+        {
+            return StatusCode(result.StatusCode, new { message = result.ErrorMessage });
+        }
+
+        return Ok(new { success = true, message = "Account deleted successfully." });
     }
 
     /// <summary>

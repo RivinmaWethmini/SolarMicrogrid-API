@@ -30,6 +30,8 @@ public class AdminController : ControllerBase
     private readonly IMongoCollection<Prosumer> _prosumersCollection;
     private readonly IMongoCollection<Reservation> _reservationsCollection;
     private readonly IMongoCollection<MicrogridNode> _nodesCollection;
+    private readonly IMongoCollection<UserSession> _sessionsCollection;
+    private readonly IMongoCollection<OtpVerification> _otpCollection;
     private readonly IAuthAuditService _auditService;
     private readonly ILogger<AdminController> _logger;
 
@@ -42,24 +44,48 @@ public class AdminController : ControllerBase
         _prosumersCollection = database.GetCollection<Prosumer>("Prosumers");
         _reservationsCollection = database.GetCollection<Reservation>("Reservations");
         _nodesCollection = database.GetCollection<MicrogridNode>("MicrogridNodes");
+        _sessionsCollection = database.GetCollection<UserSession>("UserSessions");
+        _otpCollection = database.GetCollection<OtpVerification>("OtpVerifications");
         _auditService = auditService;
         _logger = logger;
     }
 
     /// <summary>
-    /// Retrieves all prosumers, optionally filtered by approval status (PendingApproval, Approved, Rejected).
+    /// Retrieves all applicants (prosumers and operators), optionally filtered by approval status and role.
     /// </summary>
     [HttpGet("prosumers")]
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetProsumers([FromQuery] string? status = null)
+    public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetProsumers([FromQuery] string? status = null, [FromQuery] string? role = null)
     {
         // Inline comment: Begin execution of GetProsumers method
         var filterBuilder = Builders<AuthUser>.Filter;
-        var filter = filterBuilder.Eq(u => u.Role, AuthRoles.Prosumer);
+        var approvalRoles = new[] {
+            AuthRoles.Prosumer, "prosumer",
+            AuthRoles.GridOperator, "gridoperator",
+            "Operator", "operator",
+            AuthRoles.Admin, "admin"
+        };
+
+        FilterDefinition<AuthUser> filter;
+        if (!string.IsNullOrWhiteSpace(role) && !string.Equals(role, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            filter = filterBuilder.Regex(u => u.Role, new MongoDB.Bson.BsonRegularExpression($"^{role}$", "i"));
+        }
+        else
+        {
+            filter = filterBuilder.In(u => u.Role, approvalRoles);
+        }
 
         if (!string.IsNullOrWhiteSpace(status) && !string.Equals(status, "all", StringComparison.OrdinalIgnoreCase))
         {
-            filter &= filterBuilder.Eq(u => u.ApprovalStatus, status);
+            if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "PendingApproval", StringComparison.OrdinalIgnoreCase))
+            {
+                filter &= filterBuilder.In(u => u.ApprovalStatus, new[] { "PendingApproval", "Pending", "pending" });
+            }
+            else
+            {
+                filter &= filterBuilder.Regex(u => u.ApprovalStatus, new MongoDB.Bson.BsonRegularExpression($"^{status}$", "i"));
+            }
         }
 
         var users = await _usersCollection
@@ -71,16 +97,22 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves prosumer registrations currently awaiting operator verification.
+    /// Retrieves prosumer and operator registrations currently awaiting administrative verification.
     /// </summary>
     [HttpGet("prosumers/pending")]
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetPendingProsumers()
     {
         // Inline comment: Begin execution of GetPendingProsumers method
+        var approvalRoles = new[] {
+            AuthRoles.Prosumer, "prosumer",
+            AuthRoles.GridOperator, "gridoperator",
+            "Operator", "operator",
+            AuthRoles.Admin, "admin"
+        };
         var filter = Builders<AuthUser>.Filter.And(
-            Builders<AuthUser>.Filter.Eq(u => u.Role, AuthRoles.Prosumer),
-            Builders<AuthUser>.Filter.Eq(u => u.ApprovalStatus, "PendingApproval")
+            Builders<AuthUser>.Filter.In(u => u.Role, approvalRoles),
+            Builders<AuthUser>.Filter.In(u => u.ApprovalStatus, new[] { "PendingApproval", "Pending", "pending" })
         );
 
         var pendingUsers = await _usersCollection
@@ -92,7 +124,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Approves a pending prosumer registration, authorizing them for microgrid energy trading.
+    /// Approves a pending prosumer or operator registration, authorizing them for system access.
     /// </summary>
     [HttpPut("prosumers/{id}/approve")]
     [HttpPost("prosumers/{id}/approve")]
@@ -107,7 +139,7 @@ public class AdminController : ControllerBase
             return NotFound(new { message = $"User with ID '{id}' was not found." });
         }
 
-        var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("email")?.Value ?? "Operator";
+        var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("email")?.Value ?? "Administrator";
 
         var updateDef = Builders<AuthUser>.Update
             .Set(u => u.ApprovalStatus, "Approved")
@@ -118,54 +150,62 @@ public class AdminController : ControllerBase
 
         await _usersCollection.UpdateOneAsync(u => u.Id == id, updateDef);
 
-        // Auto-provision or activate Prosumer grid trading asset if not present
-        var existingProsumer = await _prosumersCollection
-            .Find(p => p.UserId == id || (!string.IsNullOrEmpty(user.Nic) && p.Name.Contains(user.Nic)))
-            .FirstOrDefaultAsync();
+        if (string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase))
+        {
+            // Auto-provision or activate Prosumer grid trading asset if not present
+            var existingProsumer = await _prosumersCollection
+                .Find(p => p.UserId == id || (!string.IsNullOrEmpty(user.Nic) && p.Name.Contains(user.Nic)))
+                .FirstOrDefaultAsync();
 
-        if (existingProsumer == null)
-        {
-            var newProsumer = new Prosumer
+            if (existingProsumer == null)
             {
-                UserId = id,
-                Name = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Email.Split('@')[0],
-                Location = "Microgrid Verified Station",
-                SolarCapacityKw = 25.0,
-                BatteryCapacityKwh = 50.0,
-                AvailableEnergyKw = 15.0,
-                PricePerKwh = 45.00m,
-                IsAvailable = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            await _prosumersCollection.InsertOneAsync(newProsumer);
-        }
-        else
-        {
-            await _prosumersCollection.UpdateOneAsync(
-                p => p.Id == existingProsumer.Id,
-                Builders<Prosumer>.Update.Set(p => p.IsAvailable, true));
+                var newProsumer = new Prosumer
+                {
+                    UserId = id,
+                    Name = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Email.Split('@')[0],
+                    Location = "Microgrid Verified Station",
+                    SolarCapacityKw = 25.0,
+                    BatteryCapacityKwh = 50.0,
+                    AvailableEnergyKw = 15.0,
+                    PricePerKwh = 45.00m,
+                    IsAvailable = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _prosumersCollection.InsertOneAsync(newProsumer);
+            }
+            else
+            {
+                await _prosumersCollection.UpdateOneAsync(
+                    p => p.Id == existingProsumer.Id,
+                    Builders<Prosumer>.Update.Set(p => p.IsAvailable, true));
+            }
         }
 
         user.ApprovalStatus = "Approved";
         user.ApprovedAt = DateTime.UtcNow;
         user.ApprovedBy = adminEmail;
 
-        await _auditService.LogAsync(user.Id, "PROSUMER_APPROVED", GetClientIp(), Request.Headers.UserAgent, new()
+        string roleTitle = string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)
+            ? "Prosumer"
+            : (AuthRoles.IsOperatorRole(user.Role) ? "Operator" : user.Role);
+
+        await _auditService.LogAsync(user.Id, $"{roleTitle.ToUpperInvariant()}_APPROVED", GetClientIp(), Request.Headers.UserAgent, new()
         {
             ["adminEmail"] = adminEmail,
-            ["prosumerEmail"] = user.Email
+            ["userEmail"] = user.Email,
+            ["role"] = user.Role
         });
 
         return Ok(new
         {
             success = true,
-            message = $"Prosumer '{user.Email}' has been approved and granted microgrid energy trading access.",
+            message = $"{roleTitle} '{user.Email}' has been approved by Administrator.",
             user = MapToDto(user)
         });
     }
 
     /// <summary>
-    /// Rejects or declines a prosumer registration.
+    /// Rejects or declines a prosumer or operator registration.
     /// </summary>
     [HttpPut("prosumers/{id}/reject")]
     [HttpPost("prosumers/{id}/reject")]
@@ -180,10 +220,10 @@ public class AdminController : ControllerBase
             return NotFound(new { message = $"User with ID '{id}' was not found." });
         }
 
-        var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Operator";
+        var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Administrator";
         var reason = !string.IsNullOrWhiteSpace(body?.Reason)
             ? body.Reason
-            : "Application does not meet grid interconnection specifications.";
+            : "Application does not meet administrative verification specifications.";
 
         var updateDef = Builders<AuthUser>.Update
             .Set(u => u.ApprovalStatus, "Rejected")
@@ -192,33 +232,41 @@ public class AdminController : ControllerBase
 
         await _usersCollection.UpdateOneAsync(u => u.Id == id, updateDef);
 
-        // Deactivate active energy offers
-        await _prosumersCollection.UpdateManyAsync(
-            p => p.UserId == id,
-            Builders<Prosumer>.Update
-                .Set(p => p.IsAvailable, false)
-                .Set(p => p.AvailableEnergyKw, 0));
+        if (string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase))
+        {
+            // Deactivate active energy offers
+            await _prosumersCollection.UpdateManyAsync(
+                p => p.UserId == id,
+                Builders<Prosumer>.Update
+                    .Set(p => p.IsAvailable, false)
+                    .Set(p => p.AvailableEnergyKw, 0));
+        }
 
         user.ApprovalStatus = "Rejected";
         user.RejectionReason = reason;
 
-        await _auditService.LogAsync(user.Id, "PROSUMER_REJECTED", GetClientIp(), Request.Headers.UserAgent, new()
+        string roleTitle = string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)
+            ? "Prosumer"
+            : (AuthRoles.IsOperatorRole(user.Role) ? "Operator" : user.Role);
+
+        await _auditService.LogAsync(user.Id, $"{roleTitle.ToUpperInvariant()}_REJECTED", GetClientIp(), Request.Headers.UserAgent, new()
         {
             ["adminEmail"] = adminEmail,
             ["reason"] = reason,
-            ["prosumerEmail"] = user.Email
+            ["userEmail"] = user.Email,
+            ["role"] = user.Role
         });
 
         return Ok(new
         {
             success = true,
-            message = $"Prosumer '{user.Email}' application has been rejected.",
+            message = $"{roleTitle} '{user.Email}' application has been rejected.",
             user = MapToDto(user)
         });
     }
 
     /// <summary>
-    /// Resets a prosumer registration back to PendingApproval for demonstration or testing purposes.
+    /// Resets a prosumer or operator registration back to PendingApproval for demonstration or testing purposes.
     /// </summary>
     [HttpPut("prosumers/{id}/pending")]
     [HttpPost("prosumers/{id}/pending")]
@@ -247,10 +295,14 @@ public class AdminController : ControllerBase
         user.ApprovedBy = null;
         user.RejectionReason = null;
 
+        string roleTitle = string.Equals(user.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)
+            ? "Prosumer"
+            : (AuthRoles.IsOperatorRole(user.Role) ? "Operator" : user.Role);
+
         return Ok(new
         {
             success = true,
-            message = $"Prosumer '{user.Email}' status reset to PendingApproval.",
+            message = $"{roleTitle} '{user.Email}' status reset to PendingApproval.",
             user = MapToDto(user)
         });
     }
@@ -267,15 +319,16 @@ public class AdminController : ControllerBase
         var allReservations = await _reservationsCollection.Find(_ => true).ToListAsync();
         var allNodes = await _nodesCollection.Find(_ => true).ToListAsync();
 
-        var prosumers = allUsers.Where(u => string.Equals(u.Role, AuthRoles.Prosumer, StringComparison.OrdinalIgnoreCase)).ToList();
+        var approvalRoles = new[] { AuthRoles.Prosumer, AuthRoles.GridOperator, "Operator", AuthRoles.Admin };
+        var approvalUsers = allUsers.Where(u => approvalRoles.Contains(u.Role, StringComparer.OrdinalIgnoreCase)).ToList();
 
         var stats = new
         {
             totalUsers = allUsers.Count,
-            totalProsumers = prosumers.Count,
-            pendingProsumers = prosumers.Count(p => string.Equals(p.ApprovalStatus, "PendingApproval", StringComparison.OrdinalIgnoreCase)),
-            approvedProsumers = prosumers.Count(p => string.Equals(p.ApprovalStatus, "Approved", StringComparison.OrdinalIgnoreCase)),
-            rejectedProsumers = prosumers.Count(p => string.Equals(p.ApprovalStatus, "Rejected", StringComparison.OrdinalIgnoreCase)),
+            totalProsumers = approvalUsers.Count,
+            pendingProsumers = approvalUsers.Count(p => string.Equals(p.ApprovalStatus, "PendingApproval", StringComparison.OrdinalIgnoreCase)),
+            approvedProsumers = approvalUsers.Count(p => string.Equals(p.ApprovalStatus, "Approved", StringComparison.OrdinalIgnoreCase)),
+            rejectedProsumers = approvalUsers.Count(p => string.Equals(p.ApprovalStatus, "Rejected", StringComparison.OrdinalIgnoreCase)),
             totalConsumers = allUsers.Count(u => string.Equals(u.Role, AuthRoles.Consumer, StringComparison.OrdinalIgnoreCase)),
             totalReservations = allReservations.Count,
             pendingReservations = allReservations.Count(r => string.Equals(r.Status, "Pending", StringComparison.OrdinalIgnoreCase)),
@@ -283,6 +336,54 @@ public class AdminController : ControllerBase
         };
 
         return Ok(stats);
+    }
+
+    /// <summary>
+    /// Deletes a registered prosumer or operator account completely from all system collections.
+    /// </summary>
+    [HttpDelete("users/{id}")]
+    [HttpDelete("prosumers/{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteUser(string id)
+    {
+        // Inline comment: Begin execution of DeleteUser method
+        var user = await _usersCollection.Find(u => u.Id == id || u.Email == id).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return NotFound(new { message = $"User with ID or email '{id}' was not found." });
+        }
+
+        if (string.Equals(user.Role, AuthRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Administrative accounts cannot be deleted." });
+        }
+
+        // 1. Delete from AuthUsers collection
+        await _usersCollection.DeleteOneAsync(u => u.Id == user.Id);
+
+        // 2. Delete associated sessions
+        await _sessionsCollection.DeleteManyAsync(s => s.UserId == user.Id);
+
+        // 3. Delete associated prosumer entry if any
+        await _prosumersCollection.DeleteManyAsync(p => p.UserId == user.Id || (!string.IsNullOrEmpty(user.Nic) && (p.NIC == user.Nic || p.Name.Contains(user.Nic))));
+
+        // 4. Delete associated OTP records
+        await _otpCollection.DeleteManyAsync(o => o.Email == user.Email);
+
+        var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Administrator";
+        await _auditService.LogAsync(user.Id, "USER_DELETED_BY_ADMIN", GetClientIp(), Request.Headers.UserAgent, new()
+        {
+            ["deletedUserEmail"] = user.Email,
+            ["deletedUserRole"] = user.Role,
+            ["adminEmail"] = adminEmail
+        });
+
+        return Ok(new
+        {
+            success = true,
+            message = $"{user.Role} account '{user.Email}' has been permanently deleted from the system."
+        });
     }
 
     private static AuthUserDto MapToDto(AuthUser u)
