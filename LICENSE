@@ -1,0 +1,36 @@
+ACADEMIC RESEARCH & PROPRIETARY EVALUATION LICENSE
+===============================================================================
+PROJECT: Smart Solar Microgrid Trading System (SolarRays)
+MODULE:  SE4040 - Enterprise Application Development
+YEAR:    2026
+AUTHORS:
+  - D.M.R.W. Dissanayake (Rivinma Wethmini) [Member 4 - Lead]
+  - Sanjitha R. [Member 2]
+  - Avishka Vikum Hettige [Member 3]
+  - Manuga [Member 1]
+
+COPYRIGHT (C) 2026 THE AUTHORS AND SRI LANKA INSTITUTE OF INFORMATION TECHNOLOGY (SLIIT).
+ALL RIGHTS RESERVED.
+
+1. ACADEMIC EVALUATION USE ONLY:
+   This repository and its source code, assets, documentation, and database schemas
+   are strictly provided for academic evaluation, examination, and coursework marking
+   by authorized lecturers, instructors, examiners, and evaluators of SLIIT.
+
+2. STRICT PROHIBITION OF PLAGIARISM & UNAUTHORIZED USE:
+   - NO UNAUTHORIZED REPRODUCTION: No part of this codebase may be copied, reproduced,
+     forked, distributed, republished, or transmitted in any form or by any means,
+     electronic or mechanical, without prior written permission of the authors.
+   - NO ACADEMIC RESUBMISSION: Use of this source code, logic, architecture, or any
+     portion thereof for submission in any university coursework, assignment, viva,
+     or examination by any other student is strictly prohibited.
+   - AUTOMATED INTEGRITY SCREENING: This codebase has been fingerprinted and registered
+     with automated academic integrity and code plagiarism detection platforms (including
+     MOSS - Measure of Software Similarity, Turnitin, and Codequiry). Any derivative or
+     plagiarized submission will be immediately detected and reported for academic misconduct.
+
+3. DISCLAIMER OF WARRANTY:
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+===============================================================================
