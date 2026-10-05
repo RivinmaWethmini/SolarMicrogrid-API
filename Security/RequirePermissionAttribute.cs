@@ -1,3 +1,10 @@
+// ============================================================================
+// File: RequirePermissionAttribute.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Custom authorize attribute allowing declarative permission enforcement on controllers and actions.
+// ============================================================================
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace SolarAPI.Security;

@@ -1,3 +1,10 @@
+// ============================================================================
+// File: PermissionPolicyProvider.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Dynamic policy provider mapping permission requirements to ASP.NET Core authorization policies.
+// ============================================================================
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
@@ -9,11 +16,13 @@ public class PermissionPolicyProvider : DefaultAuthorizationPolicyProvider
 
     public PermissionPolicyProvider(IOptions<AuthorizationOptions> options) : base(options)
     {
+        // Inline comment: Begin execution of PermissionPolicyProvider constructor
         _options = options.Value;
     }
 
     public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
     {
+        // Inline comment: Begin execution of GetPolicyAsync method to dynamically generate permission requirement policy
         var existingPolicy = await base.GetPolicyAsync(policyName);
         if (existingPolicy != null)
         {

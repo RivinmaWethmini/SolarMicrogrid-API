@@ -1,3 +1,10 @@
+// ============================================================================
+// File: AdminController.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: RESTful Web API controller for administrative governance, prosumer KYC approvals, role management, and audit inspection.
+// ============================================================================
+
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +23,7 @@ public class RejectionRequestDto
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = AuthRoles.Admin)]
+[Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
 public class AdminController : ControllerBase
 {
     private readonly IMongoCollection<AuthUser> _usersCollection;
@@ -46,6 +53,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetProsumers([FromQuery] string? status = null)
     {
+        // Inline comment: Begin execution of GetProsumers method
         var filterBuilder = Builders<AuthUser>.Filter;
         var filter = filterBuilder.Eq(u => u.Role, AuthRoles.Prosumer);
 
@@ -69,6 +77,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetPendingProsumers()
     {
+        // Inline comment: Begin execution of GetPendingProsumers method
         var filter = Builders<AuthUser>.Filter.And(
             Builders<AuthUser>.Filter.Eq(u => u.Role, AuthRoles.Prosumer),
             Builders<AuthUser>.Filter.Eq(u => u.ApprovalStatus, "PendingApproval")
@@ -91,6 +100,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ApproveProsumer(string id)
     {
+        // Inline comment: Begin execution of ApproveProsumer method
         var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -163,6 +173,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RejectProsumer(string id, [FromBody] RejectionRequestDto? body = null)
     {
+        // Inline comment: Begin execution of RejectProsumer method
         var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -207,12 +218,51 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
+    /// Resets a prosumer registration back to PendingApproval for demonstration or testing purposes.
+    /// </summary>
+    [HttpPut("prosumers/{id}/pending")]
+    [HttpPost("prosumers/{id}/pending")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetToPending(string id)
+    {
+        // Inline comment: Begin execution of ResetToPending method
+        var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return NotFound(new { message = $"User with ID '{id}' was not found." });
+        }
+
+        var updateDef = Builders<AuthUser>.Update
+            .Set(u => u.ApprovalStatus, "PendingApproval")
+            .Set(u => u.ApprovedAt, null)
+            .Set(u => u.ApprovedBy, null)
+            .Set(u => u.RejectionReason, null)
+            .Set(u => u.UpdatedAt, DateTime.UtcNow);
+
+        await _usersCollection.UpdateOneAsync(u => u.Id == id, updateDef);
+
+        user.ApprovalStatus = "PendingApproval";
+        user.ApprovedAt = null;
+        user.ApprovedBy = null;
+        user.RejectionReason = null;
+
+        return Ok(new
+        {
+            success = true,
+            message = $"Prosumer '{user.Email}' status reset to PendingApproval.",
+            user = MapToDto(user)
+        });
+    }
+
+    /// <summary>
     /// Returns aggregated high-level administration statistics for the Operator Suite.
     /// </summary>
     [HttpGet("stats")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAdminStats()
     {
+        // Inline comment: Begin execution of GetAdminStats method
         var allUsers = await _usersCollection.Find(_ => true).ToListAsync();
         var allReservations = await _reservationsCollection.Find(_ => true).ToListAsync();
         var allNodes = await _nodesCollection.Find(_ => true).ToListAsync();
@@ -235,22 +285,29 @@ public class AdminController : ControllerBase
         return Ok(stats);
     }
 
-    private static AuthUserDto MapToDto(AuthUser u) => new()
+    private static AuthUserDto MapToDto(AuthUser u)
     {
-        Id = u.Id ?? string.Empty,
-        Email = u.Email,
-        Role = u.Role,
-        Permissions = u.Permissions ?? new List<string>(),
-        IsActive = u.IsActive,
-        IsVerified = u.IsVerified,
-        ApprovalStatus = u.ApprovalStatus ?? "Approved",
-        FullName = u.FullName,
-        Nic = u.Nic,
-        ApprovedAt = u.ApprovedAt,
-        RejectionReason = u.RejectionReason,
-        CreatedAt = u.CreatedAt
-    };
+        // Inline comment: Begin execution of MapToDto helper method to map database user entity to transfer object
+        return new()
+        {
+            Id = u.Id ?? string.Empty,
+            Email = u.Email,
+            Role = u.Role,
+            Permissions = u.Permissions ?? new List<string>(),
+            IsActive = u.IsActive,
+            IsVerified = u.IsVerified,
+            ApprovalStatus = u.ApprovalStatus ?? "Approved",
+            FullName = u.FullName,
+            Nic = u.Nic,
+            ApprovedAt = u.ApprovedAt,
+            RejectionReason = u.RejectionReason,
+            CreatedAt = u.CreatedAt
+        };
+    }
 
-    private string GetClientIp() =>
-        HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+    private string GetClientIp()
+    {
+        // Inline comment: Begin execution of GetClientIp helper method to extract remote client IP
+        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+    }
 }

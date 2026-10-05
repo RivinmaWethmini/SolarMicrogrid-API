@@ -24,6 +24,7 @@ public class FlexibleBsonStringSerializer : SerializerBase<string>
 {
     public override string Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
     {
+        // Inline comment: Begin execution of Deserialize method to convert BSON types to formatted strings safely
         var bsonType = context.Reader.CurrentBsonType;
         switch (bsonType)
         {
@@ -50,6 +51,7 @@ public class FlexibleBsonStringSerializer : SerializerBase<string>
 
     public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, string value)
     {
+        // Inline comment: Begin execution of Serialize method to write string value or empty string for nulls
         if (value == null)
         {
             context.Writer.WriteString(string.Empty);
@@ -112,4 +114,20 @@ public class Reservation
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
+
+    // ─── Dispatch Tracking (QR Scan Verification) ──────────────────────────────
+    // Author: Member 4 — populated by POST /api/qr/verify on successful operator scan
+
+    [BsonElement("isDispatched")]
+    [JsonPropertyName("isDispatched")]
+    public bool IsDispatched { get; set; } = false;
+
+    [BsonElement("dispatchedAt")]
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    [JsonPropertyName("dispatchedAt")]
+    public DateTime? DispatchedAt { get; set; }
+
+    [BsonElement("dispatchedBy")]
+    [JsonPropertyName("dispatchedBy")]
+    public string DispatchedBy { get; set; } = string.Empty;
+}

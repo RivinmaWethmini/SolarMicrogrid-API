@@ -30,6 +30,7 @@ public class ReservationService : IReservationService
 
     public async Task<IEnumerable<Reservation>> GetAllAsync()
     {
+        // Inline comment: Begin execution of GetAllAsync method
         var list = await _reservations.Find(_ => true)
                                   .SortByDescending(r => r.CreatedAt)
                                   .ToListAsync();
@@ -46,6 +47,7 @@ public class ReservationService : IReservationService
 
     public async Task<Reservation?> GetByIdAsync(string id)
     {
+        // Inline comment: Begin execution of GetByIdAsync method
         var r = await _reservations.Find(x => x.Id == id).FirstOrDefaultAsync();
         if (r != null)
         {
@@ -59,6 +61,7 @@ public class ReservationService : IReservationService
 
     public async Task<IEnumerable<Reservation>> GetByProsumerIdAsync(string prosumerId)
     {
+        // Inline comment: Begin execution of GetByProsumerIdAsync method
         var filter = Builders<Reservation>.Filter.Eq(r => r.ProsumerId, prosumerId);
         var list = await _reservations.Find(filter)
                                   .SortByDescending(r => r.ReservationDate)
@@ -74,6 +77,7 @@ public class ReservationService : IReservationService
 
     private void EnsureApprovedQrPayload(Reservation r)
     {
+        // Inline comment: Begin execution of EnsureApprovedQrPayload method
         if (string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(r.QrPayload))
         {
             r.QrPayload = GenerateQrPayload(r);
@@ -92,6 +96,7 @@ public class ReservationService : IReservationService
 
     public async Task<ReservationStatsDto> GetStatsAsync()
     {
+        // Inline comment: Begin execution of GetStatsAsync method
         var all = await _reservations.Find(_ => true).ToListAsync();
         var now = DateTime.UtcNow;
 
@@ -111,6 +116,7 @@ public class ReservationService : IReservationService
     // ─── CREATE ────────────────────────────────────────────────────────────────
     public async Task<Reservation> CreateAsync(Reservation reservation)
     {
+        // Inline comment: Begin execution of CreateAsync method
         if (string.IsNullOrWhiteSpace(reservation.ProsumerId))
             throw new InvalidOperationException("Prosumer ID is required.");
 
@@ -172,6 +178,7 @@ public class ReservationService : IReservationService
     // ─── APPROVE ───────────────────────────────────────────────────────────────
     public async Task<bool> ApproveAsync(string id)
     {
+        // Inline comment: Begin execution of ApproveAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -196,6 +203,7 @@ public class ReservationService : IReservationService
     // ─── REJECT ────────────────────────────────────────────────────────────────
     public async Task<bool> RejectAsync(string id)
     {
+        // Inline comment: Begin execution of RejectAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -217,6 +225,7 @@ public class ReservationService : IReservationService
     // ─── CANCEL ────────────────────────────────────────────────────────────────
     public async Task<bool> CancelAsync(string id)
     {
+        // Inline comment: Begin execution of CancelAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -247,6 +256,7 @@ public class ReservationService : IReservationService
     // ─── UPDATE ────────────────────────────────────────────────────────────────
     public async Task<bool> UpdateAsync(string id, Reservation updatedReservation)
     {
+        // Inline comment: Begin execution of UpdateAsync method
         var existing = await GetByIdAsync(id);
         if (existing == null) return false;
 
@@ -338,6 +348,7 @@ public class ReservationService : IReservationService
 
     public async Task<bool> DeleteAsync(string id)
     {
+        // Inline comment: Begin execution of DeleteAsync method
         var result = await _reservations.DeleteOneAsync(r => r.Id == id);
         return result.IsAcknowledged && result.DeletedCount > 0;
     }
@@ -369,5 +380,113 @@ public class ReservationService : IReservationService
         };
 
         return JsonSerializer.Serialize(payloadObject);
+    }
+
+    // ─── QR SCAN VERIFICATION ──────────────────────────────────────────────────
+    // Author: Member 4 — Called by POST /api/qr/verify from Android and Web operators
+
+    /// <summary>
+    /// Verifies a scanned QR payload against the live MongoDB record using 7 security checks.
+    /// On success, marks the reservation as dispatched and persists the result.
+    /// </summary>
+    public async Task<QrVerifyResult> VerifyAndDispatchAsync(QrVerifyRequest request)
+    {
+        // 1. Parse the raw scanned JSON — reject immediately if malformed
+        string scannedReservationId, scannedProsumerId, scannedNodeId, scannedStatus, scannedToken;
+        try
+        {
+            using var doc = JsonDocument.Parse(request.ScannedPayload);
+            var root = doc.RootElement;
+            scannedReservationId = root.GetProperty("reservationId").GetString() ?? "";
+            scannedProsumerId    = root.GetProperty("prosumerId").GetString() ?? "";
+            scannedNodeId        = root.GetProperty("nodeId").GetString() ?? "";
+            scannedStatus        = root.GetProperty("status").GetString() ?? "";
+            scannedToken         = root.GetProperty("securityToken").GetString() ?? "";
+        }
+        catch
+        {
+            return new QrVerifyResult
+            {
+                Success = false,
+                Message = "Invalid QR payload format. Cannot parse scan data."
+            };
+        }
+
+        // 2. Load reservation from MongoDB — reject unknown IDs
+        var reservation = await GetByIdAsync(scannedReservationId);
+        if (reservation == null)
+            return new QrVerifyResult
+            {
+                Success = false,
+                Message = $"Reservation '{scannedReservationId}' not found in system."
+            };
+
+        // 3. Status must be Approved in the database (not just in the QR)
+        if (!string.Equals(reservation.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+            return new QrVerifyResult
+            {
+                Success = false,
+                Message = $"Reservation status is '{reservation.Status}'. Only Approved reservations may be dispatched."
+            };
+
+        // 4. Duplicate scan prevention — reject already-dispatched reservations
+        if (reservation.IsDispatched)
+            return new QrVerifyResult
+            {
+                Success = false,
+                Message = $"This reservation was already dispatched on {reservation.DispatchedAt:u} by operator '{reservation.DispatchedBy}'. Duplicate scans are rejected."
+            };
+
+        // 5. Cross-verify prosumerId against DB record
+        if (!string.Equals(scannedProsumerId, reservation.ProsumerId, StringComparison.OrdinalIgnoreCase))
+            return new QrVerifyResult
+            {
+                Success = false,
+                Message = "QR prosumer ID does not match reservation record. Payload may be tampered."
+            };
+
+        // 6. Cross-verify nodeId against DB record
+        if (!string.Equals(scannedNodeId, reservation.NodeId, StringComparison.OrdinalIgnoreCase))
+            return new QrVerifyResult
+            {
+                Success = false,
+                Message = "QR node ID does not match reservation record. Payload may be tampered."
+            };
+
+        // 7. Recompute SHA256 token from DB data and compare (prevents client-generated QR forgery)
+        var rawString = $"{reservation.Id}:{reservation.ProsumerId}:{reservation.NodeId}:{reservation.ReservationDate:O}";
+        using var sha = SHA256.Create();
+        var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(rawString));
+        var expectedToken = Convert.ToHexString(hashBytes)[..12];
+
+        if (!string.Equals(scannedToken, expectedToken, StringComparison.OrdinalIgnoreCase))
+            return new QrVerifyResult
+            {
+                Success = false,
+                Message = "QR security token does not match server-computed hash. Payload is forged or corrupted."
+            };
+
+        // All checks passed — persist dispatch state in MongoDB
+        var now = DateTime.UtcNow;
+        var update = Builders<Reservation>.Update
+            .Set(r => r.IsDispatched, true)
+            .Set(r => r.DispatchedAt, now)
+            .Set(r => r.DispatchedBy, request.OperatorId)
+            .Set(r => r.Status, "Dispatched");
+
+        await _reservations.UpdateOneAsync(r => r.Id == scannedReservationId, update);
+
+        return new QrVerifyResult
+        {
+            Success = true,
+            Message = "Dispatch verified. Energy transfer authorized and finalized.",
+            ReservationId  = reservation.Id!,
+            ProsumerId     = reservation.ProsumerId,
+            NodeId         = reservation.NodeId,
+            ReservedEnergyKwh = reservation.ReservedEnergyKwh,
+            ReservationDate   = reservation.ReservationDate.ToString("o"),
+            DispatchedAt   = now,
+            DispatchedBy   = request.OperatorId
+        };
     }
 }

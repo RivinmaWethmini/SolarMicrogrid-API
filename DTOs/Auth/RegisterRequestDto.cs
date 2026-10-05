@@ -1,3 +1,10 @@
+// ============================================================================
+// File: RegisterRequestDto.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Data transfer object encapsulating user registration inputs including NIC, email, password, and requested role.
+// ============================================================================
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarAPI.DTOs.Auth;

@@ -1,3 +1,10 @@
+// ============================================================================
+// File: LoginRequestDto.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Data transfer object encapsulating user login credentials (email/username and password).
+// ============================================================================
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarAPI.DTOs.Auth;

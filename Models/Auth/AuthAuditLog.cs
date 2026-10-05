@@ -1,3 +1,10 @@
+// ============================================================================
+// File: AuthAuditLog.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Domain entity recording security events, user logins, role modifications, and administrative actions for compliance.
+// ============================================================================
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 

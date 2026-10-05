@@ -1,3 +1,10 @@
+// ============================================================================
+// File: TokenService.cs
+// Project: SolarAPI - Smart Solar Microgrid Trading System
+// Module: SE4040 - Enterprise Application Development
+// Description: Service implementing JWT token signing, HMAC-SHA256 signature verification, and claims generation.
+// ============================================================================
+
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -34,6 +41,19 @@ public class TokenService : ITokenService
             new("sid", sessionId),
             new("approvalStatus", user.ApprovalStatus ?? "Approved")
         };
+
+        if (string.Equals(user.Role, AuthRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(user.Role, AuthRoles.Backoffice, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.Equals(user.Role, AuthRoles.Admin, StringComparison.OrdinalIgnoreCase))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, AuthRoles.Admin));
+            }
+            if (!string.Equals(user.Role, AuthRoles.Backoffice, StringComparison.OrdinalIgnoreCase))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, AuthRoles.Backoffice));
+            }
+        }
 
         // Add custom permission claims
         if (user.Permissions != null)
@@ -75,6 +95,7 @@ public class TokenService : ITokenService
 
     public string HashToken(string token)
     {
+        // Inline comment: Begin execution of HashToken method
         ArgumentException.ThrowIfNullOrWhiteSpace(token);
         byte[] bytes = Encoding.UTF8.GetBytes(token.Trim());
         byte[] hash = SHA256.HashData(bytes);
@@ -83,6 +104,7 @@ public class TokenService : ITokenService
 
     public bool VerifyTokenHash(string token, string storedHash)
     {
+        // Inline comment: Begin execution of VerifyTokenHash method
         if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(storedHash))
         {
             return false;
