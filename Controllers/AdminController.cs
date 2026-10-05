@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AdminController.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: RESTful Web API controller for administrative governance, prosumer KYC approvals, role management, and audit inspection.
-// ============================================================================
+// RESTful Web API controller for administrative governance, prosumer KYC approvals, role management, and audit inspection.
 
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -57,7 +52,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetProsumers([FromQuery] string? status = null, [FromQuery] string? role = null)
     {
-        // Inline comment: Begin execution of GetProsumers method
+        // Begin execution of GetProsumers method
         var filterBuilder = Builders<AuthUser>.Filter;
         var approvalRoles = new[] {
             AuthRoles.Prosumer, "prosumer",
@@ -103,7 +98,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AuthUserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AuthUserDto>>> GetPendingProsumers()
     {
-        // Inline comment: Begin execution of GetPendingProsumers method
+        // Begin execution of GetPendingProsumers method
         var approvalRoles = new[] {
             AuthRoles.Prosumer, "prosumer",
             AuthRoles.GridOperator, "gridoperator",
@@ -132,7 +127,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ApproveProsumer(string id)
     {
-        // Inline comment: Begin execution of ApproveProsumer method
+        // Begin execution of ApproveProsumer method
         var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -213,7 +208,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RejectProsumer(string id, [FromBody] RejectionRequestDto? body = null)
     {
-        // Inline comment: Begin execution of RejectProsumer method
+        // Begin execution of RejectProsumer method
         var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -274,7 +269,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResetToPending(string id)
     {
-        // Inline comment: Begin execution of ResetToPending method
+        // Begin execution of ResetToPending method
         var user = await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -314,7 +309,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAdminStats()
     {
-        // Inline comment: Begin execution of GetAdminStats method
+        // Begin execution of GetAdminStats method
         var allUsers = await _usersCollection.Find(_ => true).ToListAsync();
         var allReservations = await _reservationsCollection.Find(_ => true).ToListAsync();
         var allNodes = await _nodesCollection.Find(_ => true).ToListAsync();
@@ -347,7 +342,7 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteUser(string id)
     {
-        // Inline comment: Begin execution of DeleteUser method
+        // Begin execution of DeleteUser method
         var user = await _usersCollection.Find(u => u.Id == id || u.Email == id).FirstOrDefaultAsync();
         if (user == null)
         {
@@ -388,7 +383,7 @@ public class AdminController : ControllerBase
 
     private static AuthUserDto MapToDto(AuthUser u)
     {
-        // Inline comment: Begin execution of MapToDto helper method to map database user entity to transfer object
+        // Begin execution of MapToDto helper method to map database user entity to transfer object
         return new()
         {
             Id = u.Id ?? string.Empty,
@@ -408,7 +403,7 @@ public class AdminController : ControllerBase
 
     private string GetClientIp()
     {
-        // Inline comment: Begin execution of GetClientIp helper method to extract remote client IP
+        // Begin execution of GetClientIp helper method to extract remote client IP
         return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
     }
 }

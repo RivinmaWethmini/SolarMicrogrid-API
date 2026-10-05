@@ -1,11 +1,4 @@
-// ============================================================================
-// File: ReservationStatsDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Author: Member 4 (Energy Reservation & QR Dispatch)
-// Description: DTO for live reservation statistics used by operator dashboard
-//              and mobile prosumer dashboard cards.
-// ============================================================================
+// DTO for live reservation statistics used by operator dashboard
 
 namespace SolarAPI.Models;
 

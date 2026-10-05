@@ -1,11 +1,4 @@
-// ============================================================================
-// File: Reservation.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Author: Member 4 (Energy Reservation & QR Dispatch)
-// Description: Domain model representing energy slot reservation entity,
-//              NoSQL MongoDB BSON mappings, validation annotations, and QR fields.
-// ============================================================================
+// Domain model representing energy slot reservation entity,
 
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
@@ -24,7 +17,7 @@ public class FlexibleBsonStringSerializer : SerializerBase<string>
 {
     public override string Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
     {
-        // Inline comment: Begin execution of Deserialize method to convert BSON types to formatted strings safely
+        // Begin execution of Deserialize method to convert BSON types to formatted strings safely
         var bsonType = context.Reader.CurrentBsonType;
         switch (bsonType)
         {
@@ -51,7 +44,7 @@ public class FlexibleBsonStringSerializer : SerializerBase<string>
 
     public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, string value)
     {
-        // Inline comment: Begin execution of Serialize method to write string value or empty string for nulls
+        // Begin execution of Serialize method to write string value or empty string for nulls
         if (value == null)
         {
             context.Writer.WriteString(string.Empty);
@@ -130,4 +123,4 @@ public class Reservation
     [BsonElement("dispatchedBy")]
     [JsonPropertyName("dispatchedBy")]
     public string DispatchedBy { get; set; } = string.Empty;
-}
+}

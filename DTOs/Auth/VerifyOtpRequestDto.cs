@@ -1,9 +1,4 @@
-// ============================================================================
-// File: VerifyOtpRequestDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Data transfer object encapsulating OTP verification payload and target user email.
-// ============================================================================
+// Data transfer object encapsulating OTP verification payload and target user email.
 
 using System.ComponentModel.DataAnnotations;
 

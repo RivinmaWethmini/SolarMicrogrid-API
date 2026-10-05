@@ -1,9 +1,4 @@
-// ============================================================================
-// File: MongoDBSettings.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Configuration settings model for MongoDB connection string and target database name.
-// ============================================================================
+// Configuration settings model for MongoDB connection string and target database name.
 
 namespace SolarAPI.Configurations;
 

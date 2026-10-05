@@ -1,9 +1,4 @@
-// ============================================================================
-// File: IAuthService.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Contract defining core authentication, registration, OTP validation, and session lifecycle operations.
-// ============================================================================
+// Contract defining core authentication, registration, OTP validation, and session lifecycle operations.
 
 using SolarAPI.DTOs.Auth;
 

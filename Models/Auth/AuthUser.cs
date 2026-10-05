@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AuthUser.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Domain entity representing an authenticated user account, salted password hash, assigned role, and verification status.
-// ============================================================================
+// Domain entity representing an authenticated user account, salted password hash, assigned role, and verification status.
 
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;

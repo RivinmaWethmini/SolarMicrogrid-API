@@ -1,9 +1,7 @@
-// ============================================================================
-// File: SmtpSettings.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
+
+
 // Description: Configuration settings for Gmail SMTP relay server, credentials, and SSL options.
-// ============================================================================
+
 
 namespace SolarAPI.Configurations;
 

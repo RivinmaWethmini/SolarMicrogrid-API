@@ -1,11 +1,4 @@
-// ============================================================================
-// File: ReservationController.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Author: Member 4 (Energy Reservation & QR Dispatch)
-// Description: RESTful Web API controller for reservation CRUD,
-//              7-day booking rule, 12-hour cancellation rule, and QR dispatch.
-// ============================================================================
+// RESTful Web API controller for reservation CRUD,
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +25,7 @@ public class ReservationController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        // Inline comment: Begin execution of GetAll method
+        // Begin execution of GetAll method
         var reservations = await _reservationService.GetAllAsync();
         return Ok(reservations);
     }
@@ -42,7 +35,7 @@ public class ReservationController : ControllerBase
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {
-        // Inline comment: Begin execution of GetStats method
+        // Begin execution of GetStats method
         var stats = await _reservationService.GetStatsAsync();
         return Ok(stats);
     }
@@ -52,7 +45,7 @@ public class ReservationController : ControllerBase
     [HttpGet("prosumer/{prosumerId}")]
     public async Task<IActionResult> GetByProsumer(string prosumerId)
     {
-        // Inline comment: Begin execution of GetByProsumer method
+        // Begin execution of GetByProsumer method
         var reservations = await _reservationService.GetByProsumerIdAsync(prosumerId);
         return Ok(reservations);
     }
@@ -62,7 +55,7 @@ public class ReservationController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {
-        // Inline comment: Begin execution of GetById method
+        // Begin execution of GetById method
         var reservation = await _reservationService.GetByIdAsync(id);
 
         if (reservation == null)
@@ -78,7 +71,7 @@ public class ReservationController : ControllerBase
     [HttpGet("{id}/qr")]
     public async Task<IActionResult> GetQrPayload(string id)
     {
-        // Inline comment: Begin execution of GetQrPayload method
+        // Begin execution of GetQrPayload method
         var reservation = await _reservationService.GetByIdAsync(id);
         if (reservation == null)
             return NotFound(new { message = $"Reservation with ID '{id}' was not found." });
@@ -94,7 +87,7 @@ public class ReservationController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] Reservation reservation)
     {
-        // Inline comment: Begin execution of Create method
+        // Begin execution of Create method
         try
         {
             var created = await _reservationService.CreateAsync(reservation);
@@ -114,7 +107,7 @@ public class ReservationController : ControllerBase
     [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Approve(string id)
     {
-        // Inline comment: Begin execution of Approve method
+        // Begin execution of Approve method
         try
         {
             var success = await _reservationService.ApproveAsync(id);
@@ -139,7 +132,7 @@ public class ReservationController : ControllerBase
     [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Reject(string id)
     {
-        // Inline comment: Begin execution of Reject method
+        // Begin execution of Reject method
         try
         {
             var success = await _reservationService.RejectAsync(id);
@@ -163,7 +156,7 @@ public class ReservationController : ControllerBase
     [HttpPut("{id}/cancel")]
     public async Task<IActionResult> Cancel(string id)
     {
-        // Inline comment: Begin execution of Cancel method
+        // Begin execution of Cancel method
         try
         {
             var success = await _reservationService.CancelAsync(id);
@@ -188,7 +181,7 @@ public class ReservationController : ControllerBase
     [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Update(string id, [FromBody] Reservation updatedReservation)
     {
-        // Inline comment: Begin execution of Update method
+        // Begin execution of Update method
         try
         {
             var success = await _reservationService.UpdateAsync(id, updatedReservation);
@@ -212,7 +205,7 @@ public class ReservationController : ControllerBase
     [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Backoffice}")]
     public async Task<IActionResult> Delete(string id)
     {
-        // Inline comment: Begin execution of Delete method
+        // Begin execution of Delete method
         var success = await _reservationService.DeleteAsync(id);
 
         if (!success)

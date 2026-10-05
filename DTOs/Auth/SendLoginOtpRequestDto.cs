@@ -1,9 +1,4 @@
-// ============================================================================
-// File: SendLoginOtpRequestDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Data transfer object specifying user identity for initiating login OTP delivery.
-// ============================================================================
+// Data transfer object specifying user identity for initiating login OTP delivery.
 
 using System.ComponentModel.DataAnnotations;
 

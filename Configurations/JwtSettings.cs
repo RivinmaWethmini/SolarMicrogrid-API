@@ -1,9 +1,4 @@
-// ============================================================================
-// File: JwtSettings.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Configuration options model for JWT token generation, secret keys, issuer, and expirations.
-// ============================================================================
+// Configuration options model for JWT token generation, secret keys, issuer, and expirations.
 
 namespace SolarAPI.Configurations;
 

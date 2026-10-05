@@ -1,9 +1,4 @@
-// ============================================================================
-// File: SendOtpRequestDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Data transfer object requesting email OTP generation for verification workflows.
-// ============================================================================
+// Data transfer object requesting email OTP generation for verification workflows.
 
 using System.ComponentModel.DataAnnotations;
 

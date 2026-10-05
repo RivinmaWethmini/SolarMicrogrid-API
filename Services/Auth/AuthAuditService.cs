@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AuthAuditService.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Service for logging and querying security audit events, logins, and administrative actions in MongoDB.
-// ============================================================================
+// Service for logging and querying security audit events, logins, and administrative actions in MongoDB.
 
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;

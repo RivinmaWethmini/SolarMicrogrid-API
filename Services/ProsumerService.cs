@@ -1,10 +1,5 @@
 
-// ============================================================================
-// File: ProsumerService.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Implementation of prosumer business operations, MongoDB persistence, and availability filtering.
-// ============================================================================
+// Implementation of prosumer business operations, MongoDB persistence, and availability filtering.
 
 using MongoDB.Driver;
 using SolarAPI.Models;
@@ -36,7 +31,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<Prosumer?> GetByIdAsync(string nic)
     {
-        // Inline comment: Begin execution of GetByIdAsync method to query prosumer by NIC or ID
+        // Begin execution of GetByIdAsync method to query prosumer by NIC or ID
         if (string.IsNullOrWhiteSpace(nic))
         {
             return null;
@@ -59,7 +54,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<Prosumer> CreateAsync(Prosumer prosumer)
     {
-        // Inline comment: Begin execution of CreateAsync method
+        // Begin execution of CreateAsync method
         prosumer.CreatedAt = DateTime.UtcNow;
         prosumer.IsAvailable = true;
 
@@ -76,7 +71,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> UpdateAsync(string nic, Prosumer updatedProsumer)
     {
-        // Inline comment: Begin execution of UpdateAsync method
+        // Begin execution of UpdateAsync method
         var existing = await GetByIdAsync(nic);
 
         if (existing == null)
@@ -98,7 +93,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> DeactivateAsync(string nic)
     {
-        // Inline comment: Begin execution of DeactivateAsync method
+        // Begin execution of DeactivateAsync method
         var existing = await GetByIdAsync(nic);
 
         if (existing == null)
@@ -120,7 +115,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> ReactivateAsync(string nic)
     {
-        // Inline comment: Begin execution of ReactivateAsync method
+        // Begin execution of ReactivateAsync method
         var existing = await GetByIdAsync(nic);
 
         if (existing == null)
@@ -141,7 +136,7 @@ public class ProsumerService : IProsumerService
 
     public async Task<bool> DeleteAsync(string nic)
     {
-        // Inline comment: Begin execution of DeleteAsync method
+        // Begin execution of DeleteAsync method
         var existing = await GetByIdAsync(nic);
 
         if (existing == null)

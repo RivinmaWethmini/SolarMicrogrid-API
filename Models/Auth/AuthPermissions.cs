@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AuthPermissions.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Constants and definitions for fine-grained application authorization permissions.
-// ============================================================================
+// Constants and definitions for fine-grained application authorization permissions.
 
 namespace SolarAPI.Models.Auth;
 
@@ -30,7 +25,7 @@ public static class AuthPermissions
 
     public static List<string> GetDefaultPermissionsForRole(string role)
     {
-        // Inline comment: Begin execution of GetDefaultPermissionsForRole method to map user role to authorization claims
+        // Begin execution of GetDefaultPermissionsForRole method to map user role to authorization claims
         return role switch
         {
             AuthRoles.Admin or AuthRoles.Backoffice => new List<string>

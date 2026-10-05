@@ -1,9 +1,4 @@
-// ============================================================================
-// File: MockEmailService.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Development fallback email service logging OTP codes to console when SMTP is unreachable.
-// ============================================================================
+// Development fallback email service logging OTP codes to console when SMTP is unreachable.
 
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +19,7 @@ public class MockEmailService : IEmailService
 
     public Task SendOtpEmailAsync(string toEmail, string otpCode, int expiryMinutes = 5)
     {
-        // Inline comment: Begin execution of SendOtpEmailAsync method
+        // Begin execution of SendOtpEmailAsync method
         var emailBanner = $"""
         ================================================================================
         [EMAIL DISPATCH - SMART SOLAR MICROGRID AUTHENTICATION]

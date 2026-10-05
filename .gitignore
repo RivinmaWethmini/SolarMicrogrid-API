@@ -5,3 +5,7 @@ obj/
 .vs/
 publish/
 
+# Educational & Architecture Reports
+AuthDocumentation/
+AUTHENTICATION_BACKEND_MASTER_REPORT.md
+AUTHENTICATION_BACKEND_MASTER_REPORT.html

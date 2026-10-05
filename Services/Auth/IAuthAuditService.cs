@@ -1,9 +1,4 @@
-// ============================================================================
-// File: IAuthAuditService.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Contract for logging security audit trails and administrative actions.
-// ============================================================================
+// Contract for logging security audit trails and administrative actions.
 
 namespace SolarAPI.Services.Auth;
 

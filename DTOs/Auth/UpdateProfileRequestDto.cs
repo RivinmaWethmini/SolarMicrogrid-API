@@ -1,9 +1,4 @@
-// ============================================================================
-// File: UpdateProfileRequestDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Data transfer object for updating authenticated user profile details and password.
-// ============================================================================
+// Data transfer object for updating authenticated user profile details and password.
 
 using System.ComponentModel.DataAnnotations;
 

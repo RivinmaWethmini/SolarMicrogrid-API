@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AuthResponseDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Data transfer object returned upon successful authentication, containing JWT tokens and user profile.
-// ============================================================================
+// Data transfer object returned upon successful authentication, containing JWT tokens and user profile.
 
 namespace SolarAPI.DTOs.Auth;
 

@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AuthController.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: RESTful Web API controller for user registration, multi-factor OTP authentication, JWT token refresh, and session revocation.
-// ============================================================================
+// RESTful Web API controller for user registration, multi-factor OTP authentication, JWT token refresh, and session revocation.
 
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -37,7 +32,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
     {
-        // Inline comment: Begin execution of Register method
+        // Begin execution of Register method
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -67,7 +62,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
-        // Inline comment: Begin execution of Login method
+        // Begin execution of Login method
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -96,7 +91,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto request)
     {
-        // Inline comment: Begin execution of SendOtp method
+        // Begin execution of SendOtp method
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -127,7 +122,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> SendLoginOtp([FromBody] SendLoginOtpRequestDto request)
     {
-        // Inline comment: Begin execution of SendLoginOtp method
+        // Begin execution of SendLoginOtp method
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -156,7 +151,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
     {
-        // Inline comment: Begin execution of VerifyOtp method
+        // Begin execution of VerifyOtp method
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -186,7 +181,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
     {
-        // Inline comment: Begin execution of RefreshToken method
+        // Begin execution of RefreshToken method
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -214,7 +209,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto? optionalBody = null)
     {
-        // Inline comment: Begin execution of Logout method
+        // Begin execution of Logout method
         var userId = GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -239,7 +234,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetSessions()
     {
-        // Inline comment: Begin execution of GetSessions method
+        // Begin execution of GetSessions method
         var userId = GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -264,7 +259,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RevokeSession([FromRoute] string sessionId)
     {
-        // Inline comment: Begin execution of RevokeSession method
+        // Begin execution of RevokeSession method
         var userId = GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -295,7 +290,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCurrentUser()
     {
-        // Inline comment: Begin execution of GetCurrentUser method
+        // Begin execution of GetCurrentUser method
         var userId = GetUserId();
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
@@ -320,7 +315,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequestDto request)
     {
-        // Inline comment: Begin execution of UpdateProfile method
+        // Begin execution of UpdateProfile method
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -353,7 +348,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DeleteAccount()
     {
-        // Inline comment: Begin execution of DeleteAccount method
+        // Begin execution of DeleteAccount method
         var userId = GetUserId();
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
@@ -383,7 +378,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public IActionResult TestAdminAccess()
     {
-        // Inline comment: Begin execution of TestAdminAccess method
+        // Begin execution of TestAdminAccess method
         var userId = GetUserId();
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("email")?.Value ?? string.Empty;
         var role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
@@ -414,7 +409,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public IActionResult TestPermissionAccess()
     {
-        // Inline comment: Begin execution of TestPermissionAccess method
+        // Begin execution of TestPermissionAccess method
         var userId = GetUserId();
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("email")?.Value ?? string.Empty;
         var role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
@@ -437,20 +432,20 @@ public class AuthController : ControllerBase
 
     private string? GetUserId()
     {
-        // Inline comment: Begin execution of GetUserId method
+        // Begin execution of GetUserId method
         return User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.FindFirst("sub")?.Value;
     }
 
     private string? GetSessionId()
     {
-        // Inline comment: Begin execution of GetSessionId method
+        // Begin execution of GetSessionId method
         return User.FindFirst("sid")?.Value;
     }
 
     private string GetClientIpAddress()
     {
-        // Inline comment: Begin execution of GetClientIpAddress method
+        // Begin execution of GetClientIpAddress method
         if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor) && !string.IsNullOrWhiteSpace(forwardedFor))
         {
             var firstIp = forwardedFor.ToString().Split(',')[0].Trim();
@@ -462,7 +457,7 @@ public class AuthController : ControllerBase
 
     private string GetUserAgent()
     {
-        // Inline comment: Begin execution of GetUserAgent method
+        // Begin execution of GetUserAgent method
         return Request.Headers.UserAgent.ToString() ?? "Unknown";
     }
 }

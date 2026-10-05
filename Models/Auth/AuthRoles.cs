@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AuthRoles.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: System role definitions (Admin, Prosumer, Consumer, GridOperator) for role-based access control.
-// ============================================================================
+// System role definitions (Admin, Prosumer, Consumer, GridOperator) for role-based access control.
 
 namespace SolarAPI.Models.Auth;
 
@@ -27,7 +22,7 @@ public static class AuthRoles
 
     public static bool IsValidRole(string role)
     {
-        // Inline comment: Begin execution of IsValidRole method to validate role against allowed system roles
+        // Begin execution of IsValidRole method to validate role against allowed system roles
         return AllRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
     }
 

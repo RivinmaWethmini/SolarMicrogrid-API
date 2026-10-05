@@ -1,9 +1,4 @@
-// ============================================================================
-// File: OtpVerification.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Domain entity storing temporary hashed OTP codes, expiry windows, attempt counts, and consumption flags.
-// ============================================================================
+// Domain entity storing temporary hashed OTP codes, expiry windows, attempt counts, and consumption flags.
 
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;

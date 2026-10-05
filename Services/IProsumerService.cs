@@ -1,10 +1,5 @@
 
-// ============================================================================
-// File: IProsumerService.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Service contract defining business operations for prosumer lifecycle management and query retrieval.
-// ============================================================================
+// Service contract defining business operations for prosumer lifecycle management and query retrieval.
 
 using SolarAPI.Models;
 

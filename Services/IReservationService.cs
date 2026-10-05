@@ -1,11 +1,4 @@
-// ============================================================================
-// File: IReservationService.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Author: Member 4 (Energy Reservation & QR Dispatch)
-// Description: Service interface for reservation business logic,
-//              7-day booking rule, 12-hour cancellation rule, QR dispatch.
-// ============================================================================
+// Service interface for reservation business logic,
 
 using SolarAPI.Models;
 

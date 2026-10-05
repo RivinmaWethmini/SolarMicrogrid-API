@@ -1,9 +1,4 @@
-// ============================================================================
-// File: QrVerifyResult.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Author: Member 4 (Energy Reservation & QR Dispatch)
-// Description: DTO returned to operator clients after QR scan verification.
-// ============================================================================
+// DTO returned to operator clients after QR scan verification.
 
 using System.Text.Json.Serialization;
 

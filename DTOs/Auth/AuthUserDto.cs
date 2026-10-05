@@ -1,9 +1,6 @@
-// ============================================================================
-// File: AuthUserDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
+
 // Description: Data transfer object representing sanitized user details for client-side consumption.
-// ============================================================================
+
 
 namespace SolarAPI.DTOs.Auth;
 

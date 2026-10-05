@@ -1,9 +1,7 @@
-// ============================================================================
-// File: Program.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading & Reservation System
-// Module: SE4040 - Enterprise Application Development
+
+
 // Description: Main application entry point, dependency injection configuration, middleware pipeline, and MongoDB initialization.
-// ============================================================================
+
 
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -76,7 +74,7 @@ builder.Services.AddScoped<IAuthAuditService, AuthAuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuthDatabaseInitializer, AuthDatabaseInitializer>();
 
-// ─── JWT Authentication ───────────────────────────────────────────────────────
+// JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

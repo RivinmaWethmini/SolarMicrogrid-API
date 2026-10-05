@@ -1,11 +1,5 @@
 
-// ============================================================================
-// File: ProsumerController.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: RESTful Web API controller for managing solar prosumers,
-//              capacity listings, and profile deactivation.
-// ============================================================================
+// RESTful Web API controller for managing solar prosumers,
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +22,7 @@ public class ProsumerController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Prosumer>>> GetAll()
     {
-        // Inline comment: Begin execution of GetAll method
+        // Begin execution of GetAll method
         var prosumers = await _prosumerService.GetAllAsync();
         return Ok(prosumers);
     }
@@ -36,7 +30,7 @@ public class ProsumerController : ControllerBase
     [HttpGet("available")]
     public async Task<ActionResult<IEnumerable<Prosumer>>> GetAvailable()
     {
-        // Inline comment: Begin execution of GetAvailable method
+        // Begin execution of GetAvailable method
         var prosumers = await _prosumerService.GetAvailableAsync();
         return Ok(prosumers);
     }
@@ -44,7 +38,7 @@ public class ProsumerController : ControllerBase
     [HttpGet("{nic}")]
     public async Task<ActionResult<Prosumer>> GetById(string nic)
     {
-        // Inline comment: Begin execution of GetById method
+        // Begin execution of GetById method
         var prosumer = await _prosumerService.GetByIdAsync(nic);
 
         if (prosumer == null)
@@ -62,7 +56,7 @@ public class ProsumerController : ControllerBase
     public async Task<ActionResult<Prosumer>> Create(
         [FromBody] Prosumer prosumer)
     {
-        // Inline comment: Begin execution of Create method
+        // Begin execution of Create method
         var created = await _prosumerService.CreateAsync(prosumer);
 
         return CreatedAtAction(
@@ -76,7 +70,7 @@ public class ProsumerController : ControllerBase
         string nic,
         [FromBody] Prosumer prosumer)
     {
-        // Inline comment: Begin execution of Update method
+        // Begin execution of Update method
         var success = await _prosumerService.UpdateAsync(nic, prosumer);
 
         if (!success)
@@ -93,7 +87,7 @@ public class ProsumerController : ControllerBase
     [HttpPatch("{nic}/deactivate")]
     public async Task<IActionResult> Deactivate(string nic)
     {
-        // Inline comment: Begin execution of Deactivate method
+        // Begin execution of Deactivate method
         var success = await _prosumerService.DeactivateAsync(nic);
 
         if (!success)
@@ -112,7 +106,7 @@ public class ProsumerController : ControllerBase
     [Authorize(Roles = "Admin,Backoffice")]
     public async Task<IActionResult> Reactivate(string nic)
     {
-        // Inline comment: Begin execution of Reactivate method - Backoffice authorization enforced
+        // Begin execution of Reactivate method - Backoffice authorization enforced
         var success = await _prosumerService.ReactivateAsync(nic);
 
         if (!success)
@@ -129,7 +123,7 @@ public class ProsumerController : ControllerBase
     [HttpDelete("{nic}")]
     public async Task<IActionResult> Delete(string nic)
     {
-        // Inline comment: Begin execution of Delete method
+        // Begin execution of Delete method
         var success = await _prosumerService.DeleteAsync(nic);
 
         if (!success)

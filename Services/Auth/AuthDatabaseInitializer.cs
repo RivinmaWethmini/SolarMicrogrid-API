@@ -1,9 +1,4 @@
-// ============================================================================
-// File: AuthDatabaseInitializer.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Database seeder ensuring required collections, unique indices, and default administrative accounts exist on startup.
-// ============================================================================
+// Database seeder ensuring required collections, unique indices, and default administrative accounts exist on startup.
 
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -24,7 +19,7 @@ public class AuthDatabaseInitializer : IAuthDatabaseInitializer
 
     public async Task InitializeAsync()
     {
-        // Inline comment: Begin execution of InitializeAsync method
+        // Begin execution of InitializeAsync method
         try
         {
             // 1. AuthUsers collection indexes: Unique Email

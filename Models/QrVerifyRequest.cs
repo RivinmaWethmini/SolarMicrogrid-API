@@ -1,9 +1,4 @@
-// ============================================================================
-// File: QrVerifyRequest.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Author: Member 4 (Energy Reservation & QR Dispatch)
-// Description: DTO received from Android and Web operator QR scanners.
-// ============================================================================
+// DTO received from Android and Web operator QR scanners.
 
 using System.Text.Json.Serialization;
 

@@ -1,10 +1,5 @@
 
-// ============================================================================
-// File: Prosumer.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Domain entity representing an energy prosumer, contact details, KYC status, and registered solar inverter capacity.
-// ============================================================================
+// Domain entity representing an energy prosumer, contact details, KYC status, and registered solar inverter capacity.
 
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;

@@ -1,9 +1,4 @@
-// ============================================================================
-// File: SendOtpResponseDto.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Data transfer object confirming OTP dispatch status, expiration duration, and masked target email.
-// ============================================================================
+// Data transfer object confirming OTP dispatch status, expiration duration, and masked target email.
 
 namespace SolarAPI.DTOs.Auth;
 

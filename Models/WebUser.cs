@@ -1,9 +1,4 @@
-// ============================================================================
-// File: WebUser.cs
-// Project: SolarAPI - Smart Solar Microgrid Trading System
-// Module: SE4040 - Enterprise Application Development
-// Description: Legacy domain entity representing web portal user credentials and access permissions.
-// ============================================================================
+// Legacy domain entity representing web portal user credentials and access permissions.
 
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
